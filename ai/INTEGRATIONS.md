@@ -10,7 +10,9 @@ Status: NOT CONFIGURED.
 - Never store raw passwords in application tables.
 
 ## Midtrans Snap
-Status: NOT CONFIGURED.
+Status: SETUP ONLY (P6-1). Env validation, fixed-amount config and a server-side Snap token client exist and are tested with a stubbed `fetch`. NOT verified against the real Midtrans sandbox (no keys/network in the sandbox). No payment table writes, webhook, UI or Snap popup yet.
+- Env (see `.env.example`): `MIDTRANS_SERVER_KEY` (secret), `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`, `MIDTRANS_IS_PRODUCTION`. Validated lazily in `src/server/payments/midtrans-env.ts`; sandbox ("SB-") keys are rejected in production mode and vice versa.
+- Token creation: `createSnapTransaction(orderId)` in `src/server/payments/midtrans.ts` POSTs to `https://app.sandbox.midtrans.com/snap/v1/transactions` (production: `https://app.midtrans.com/...`) with Basic auth (server key as username). Amount is fixed by `INITIAL_PAYMENT_AMOUNT_IDR` and is not a parameter.
 - Initial amount: IDR 350,000, created server-side.
 - Keep server key server-only.
 - Persist transaction reference and expected amount.

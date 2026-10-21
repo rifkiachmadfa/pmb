@@ -10,7 +10,7 @@ Statuses: `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `COMPLETED`, `VERIFICATION_RE
 | 3 | Student data fields and validation | VERIFICATION_REQUIRED (P3-1 IMPLEMENTED/TESTED in sandbox; signed-in server round trip untested; assumptions in ADR-021 need school approval) |
 | 4 | Parent/guardian and previous school | VERIFICATION_REQUIRED (P4-1, P4-2 IMPLEMENTED, partly tested; browser interaction and school approval of ADR-022/023 pending) |
 | 5 | Confirmation and registration persistence | VERIFICATION_REQUIRED (P5-1 IMPLEMENTED; persistence TESTED against a local PostgreSQL 16, not the Supabase project; signed-in end-to-end, browser interaction, and owner migration pending) |
-| 6 | Midtrans transaction creation, webhook verification, payment state machine | NOT_STARTED |
+| 6 | Midtrans | IN PROGRESS (P6-1 setup only: env, fixed amount, Snap token client; payment persistence, webhook verification, UI pending) |
 | 7 | Fonnte notifications at registration and verified-payment events | NOT_STARTED |
 | 8 | Student dashboard and status presentation; admin admission-status workflow as approved | NOT_STARTED |
 | 9 | Security review, accessibility, end-to-end and failure-path QA | NOT_STARTED |

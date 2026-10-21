@@ -132,3 +132,12 @@ Status: APPROVED (owner: Google-only for simplicity); implementation UNVERIFIED 
 - Logging: the action logs only error name + code (Prisma messages may embed submitted values).
 - No edit-after-submit flow exists; the UI says so. Whether/when applicants may edit is OPEN.
 
+## ADR-025 — Midtrans initial setup (P6-1; PROPOSED)
+- Scope of P6-1 only: config + env + Snap client. Not included (next tasks): `Payment` rows/transitions, create-payment action, notification webhook + signature/amount verification, Snap popup UI, status checks, dashboard payment status.
+- No new dependency: plain `fetch` against the documented Snap endpoint instead of the `midtrans-client` package (small surface, no extra supply-chain exposure). Revisit if the notification verification work benefits from the SDK.
+- Midtrans env is validated lazily in its own module (not in `getServerEnv`), so login/registration keep working without payment keys. Wrong-environment keys fail fast ("SB-" prefix check; assumption based on Midtrans sandbox key naming, to be confirmed with real keys).
+- Order ids are server-generated, opaque (`PMB-` + 20 random chars, no personal data), matching Midtrans limits (<=50 chars, `A-Za-z0-9_.~-`).
+- The request carries only `transaction_details` and one `item_details` line ("Pembayaran awal biaya masuk PMB", 350000): no name/email/phone is sent to Midtrans. Customer details can be added later if the school wants them.
+- Errors expose only reason + HTTP status; provider bodies are never copied into errors/logs. Timeout 15 s.
+- The returned token/redirect URL is not proof of payment (unchanged rule).
+
