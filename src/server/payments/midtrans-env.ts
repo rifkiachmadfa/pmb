@@ -36,16 +36,20 @@ export type MidtransConfig = {
   snapTransactionsUrl: string;
   /** Script the browser loads to open the payment popup (later task). */
   snapJsUrl: string;
+  /** Base of the server-to-server status API: `${statusBaseUrl}/{order_id}/status`. */
+  statusBaseUrl: string;
 };
 
 const HOSTS = {
   sandbox: {
     transactions: "https://app.sandbox.midtrans.com/snap/v1/transactions",
     js: "https://app.sandbox.midtrans.com/snap/snap.js",
+    status: "https://api.sandbox.midtrans.com/v2",
   },
   production: {
     transactions: "https://app.midtrans.com/snap/v1/transactions",
     js: "https://app.midtrans.com/snap/snap.js",
+    status: "https://api.midtrans.com/v2",
   },
 } as const;
 
@@ -77,6 +81,7 @@ export function getMidtransConfig(): MidtransConfig {
     isProduction,
     snapTransactionsUrl: hosts.transactions,
     snapJsUrl: hosts.js,
+    statusBaseUrl: hosts.status,
   };
   return cached;
 }

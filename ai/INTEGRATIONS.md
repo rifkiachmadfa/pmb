@@ -10,9 +10,13 @@ Status: NOT CONFIGURED.
 - Never store raw passwords in application tables.
 
 ## Midtrans Snap
-Status: SETUP ONLY (P6-1). Env validation, fixed-amount config and a server-side Snap token client exist and are tested with a stubbed `fetch`. NOT verified against the real Midtrans sandbox (no keys/network in the sandbox). No payment table writes, webhook, UI or Snap popup yet.
+Status: LOGIC IMPLEMENTED (P6-1..P6-3), no UI. Payment creation/reuse, notification webhook with signature+amount+identity verification, state transitions, idempotency and browser-return status sync are IMPLEMENTED and TESTED on local PostgreSQL 16 with a stubbed Midtrans `fetch` (see ADR-026). NOT verified against the real Midtrans sandbox (no keys/network in the sandbox). Snap popup UI and dashboard status are later tasks.
 - Env (see `.env.example`): `MIDTRANS_SERVER_KEY` (secret), `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`, `MIDTRANS_IS_PRODUCTION`. Validated lazily in `src/server/payments/midtrans-env.ts`; sandbox ("SB-") keys are rejected in production mode and vice versa.
 - Token creation: `createSnapTransaction(orderId)` in `src/server/payments/midtrans.ts` POSTs to `https://app.sandbox.midtrans.com/snap/v1/transactions` (production: `https://app.midtrans.com/...`) with Basic auth (server key as username). Amount is fixed by `INITIAL_PAYMENT_AMOUNT_IDR` and is not a parameter.
+- Create: `createInitialPayment` (`src/server/payments/create.ts`), server action `startInitialPayment` (`src/features/payment/actions.ts`). Reuses the unpaid attempt; Midtrans called outside the DB transaction.
+- Webhook: `POST /api/payments/midtrans/notification` -> `processMidtransNotification` (`notification.ts`). Pure rules (status mapping, transitions, amount parsing, signature, event key) in `status.ts`.
+- Browser return: server action `refreshPaymentStatus` -> `syncOwnPendingPayments` calls the Midtrans status API server-side. `getPaymentStatus` returns stored state (never the Snap token).
+- Owner setup still required: set the Notification URL in the Midtrans dashboard (Settings > Configuration > Payment Notification URL) to `https://<domain>/api/payments/midtrans/notification` (sandbox and production are separate), and provide sandbox keys.
 - Initial amount: IDR 350,000, created server-side.
 - Keep server key server-only.
 - Persist transaction reference and expected amount.

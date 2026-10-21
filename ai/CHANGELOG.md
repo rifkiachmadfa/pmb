@@ -1,5 +1,10 @@
 # Project Changelog
 
+## P6-2 + P6-3 — Pembayaran awal: buat transaksi, verifikasi notifikasi, sinkronisasi status (2026-10-22) — IMPLEMENTED; TESTED on local PostgreSQL 16 with stubbed Midtrans (171 checks + 3 mutation checks); real Midtrans sandbox and signed-in server actions UNTESTED
+- New: `src/server/payments/{status,lock,create,notification}.ts`, `src/app/api/payments/midtrans/notification/route.ts`, `src/features/payment/actions.ts` (`startInitialPayment`, `getPaymentStatus`, `refreshPaymentStatus`). Modified: `src/config/payment.ts` (expiry 24 h, stale 60 s), `midtrans-env.ts` (status API host), `midtrans.ts` (`expiry` in the request, `getTransactionStatus`).
+- Behavior: one unpaid attempt reused; no attempt after PAID; webhook verifies signature, order identity, stored amount, currency and allowed transition; duplicates/out-of-order never downgrade or re-notify; PAID queues one `PAYMENT_VERIFIED` outbox row; admission status untouched. No schema change, no migration, no dependency.
+- Decision: ADR-026 (PROPOSED). Known gap: no rate limit on `refreshPaymentStatus`.
+
 ## P6-1 — Setup awal Midtrans (2026-10-22) — IMPLEMENTED; TESTED with stubbed fetch (32 checks); real Midtrans sandbox UNTESTED
 - New: `src/config/payment.ts` (fixed IDR 350,000 + item label), `src/server/payments/midtrans-env.ts` (lazy env validation, sandbox/production URLs, key/env mismatch guard), `src/server/payments/midtrans.ts` (`createSnapTransaction`, `generateMidtransOrderId`, `MidtransRequestError`). `.env.example` documents the three variables.
 - Deliberately NOT done: Payment persistence, webhook/verification, UI, dashboard status, any DB migration. No dependency added. ADR-025 (PROPOSED).

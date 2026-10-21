@@ -2,7 +2,11 @@ import "server-only";
 import { randomInt } from "node:crypto";
 import { z } from "zod";
 
-import { INITIAL_PAYMENT_AMOUNT_IDR, INITIAL_PAYMENT_ITEM } from "@/config/payment";
+import {
+  INITIAL_PAYMENT_AMOUNT_IDR,
+  INITIAL_PAYMENT_EXPIRY_HOURS,
+  INITIAL_PAYMENT_ITEM,
+} from "@/config/payment";
 import { getMidtransConfig } from "./midtrans-env";
 
 /**
@@ -66,6 +70,7 @@ export async function createSnapTransaction(orderId: string): Promise<SnapTransa
         quantity: 1,
       },
     ],
+    expiry: { unit: "hours", duration: INITIAL_PAYMENT_EXPIRY_HOURS },
   };
 
   let response: Response;
@@ -92,4 +97,63 @@ export async function createSnapTransaction(orderId: string): Promise<SnapTransa
   if (!parsed.success) throw new MidtransRequestError("bad_response", response.status);
 
   return { token: parsed.data.token, redirectUrl: parsed.data.redirect_url };
+}
+
+/**
+ * Raw transaction status as returned by Midtrans (status API). Only the fields we
+ * use are kept; unknown fields are dropped and the body is never logged.
+ */
+const statusSchema = z.object({
+  status_code: z.string().min(1),
+  transaction_status: z.string().min(1).optional(),
+  order_id: z.string().min(1).optional(),
+  gross_amount: z.string().min(1).optional(),
+  signature_key: z.string().min(1).optional(),
+  transaction_id: z.string().min(1).optional(),
+  fraud_status: z.string().min(1).optional(),
+  payment_type: z.string().min(1).optional(),
+  transaction_time: z.string().min(1).optional(),
+  currency: z.string().min(1).optional(),
+});
+
+export type ProviderTransactionStatus = z.infer<typeof statusSchema>;
+
+/**
+ * Asks Midtrans (server-to-server, with our server key) for the current state of
+ * one order. This is how a payment is reconciled when the browser comes back from
+ * the payment page but the notification has not arrived (or was missed).
+ *
+ * Returns `null` when Midtrans does not know the order (it answers with a body
+ * `status_code` of "404", sometimes with HTTP 200). Any other failure throws a
+ * `MidtransRequestError` that carries no provider body.
+ */
+export async function getTransactionStatus(
+  orderId: string,
+): Promise<ProviderTransactionStatus | null> {
+  if (!ORDER_ID_RE.test(orderId)) throw new MidtransRequestError("invalid_order_id");
+
+  const config = getMidtransConfig();
+  let response: Response;
+  try {
+    response = await fetch(`${config.statusBaseUrl}/${encodeURIComponent(orderId)}/status`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Basic ${Buffer.from(`${config.serverKey}:`).toString("base64")}`,
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch (e) {
+    const timedOut = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+    throw new MidtransRequestError(timedOut ? "timeout" : "network");
+  }
+
+  if (response.status === 404) return null;
+  if (!response.ok) throw new MidtransRequestError("http_error", response.status);
+
+  const parsed = statusSchema.safeParse(await response.json().catch(() => null));
+  if (!parsed.success) throw new MidtransRequestError("bad_response", response.status);
+  if (parsed.data.status_code === "404") return null;
+  return parsed.data;
 }
