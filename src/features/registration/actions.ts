@@ -1,6 +1,7 @@
 "use server";
 
-import { getSessionUser } from "@/server/auth/session";
+import { ensureAccount, getSessionUser } from "@/server/auth/session";
+import { submitRegistration as persistRegistration, type SubmitOutcome } from "@/server/registration/submit";
 import { validateSchoolDraft, type SchoolFieldErrors } from "./school-schema";
 import { validateParentsDraft, type ParentsFieldErrors } from "./guardian-schema";
 import { validateStudentDraft, type StudentFieldErrors } from "./student-schema";
@@ -73,4 +74,36 @@ export async function validateSchoolStep(
   return result.ok
     ? { status: "ok" }
     : { status: "invalid", errors: result.errors };
+}
+
+export type SubmitRegistrationResult =
+  | SubmitOutcome
+  | { status: "unauthenticated" }
+  | { status: "error" };
+
+/**
+ * Final step (Phase 5): re-validates the WHOLE wizard payload on the server and
+ * stores the registration for the signed-in account. The owner is taken from the
+ * verified session; nothing in the payload can choose it. Safe to repeat: a
+ * second call returns the existing registration instead of creating another.
+ *
+ * The payload is personal data: never logged. Unexpected failures log only the
+ * error name/code (Prisma messages can embed submitted values).
+ */
+export async function submitRegistration(
+  input: unknown,
+): Promise<SubmitRegistrationResult> {
+  const user = await getSessionUser();
+  if (!user) return { status: "unauthenticated" };
+
+  try {
+    const account = await ensureAccount(user);
+    return await persistRegistration(account.id, input);
+  } catch (e) {
+    const name = e instanceof Error ? e.name : "UnknownError";
+    const code =
+      typeof e === "object" && e !== null && "code" in e ? String((e as { code: unknown }).code) : "-";
+    console.error(`registration.submit failed: ${name} code=${code}`);
+    return { status: "error" };
+  }
 }

@@ -12,8 +12,13 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { validateParentsStep, validateSchoolStep, validateStudentStep } from "../actions";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  submitRegistration,
+  validateParentsStep,
+  validateSchoolStep,
+  validateStudentStep,
+} from "../actions";
 import { initialWizardState, wizardReducer } from "../draft";
 import {
   PARENTS_FIELDS,
@@ -47,7 +52,23 @@ import { StepStudent } from "./step-student";
 import { StepTerms } from "./step-terms";
 import { WizardStepper } from "./wizard-stepper";
 
-type Notice = "session" | "network" | null;
+type Notice = "session" | "network" | "server" | null;
+
+const SECTION_LABEL = {
+  terms: "Ketentuan",
+  student: "Data Siswa",
+  guardian: "Data Orang Tua / Wali",
+  previousSchool: "Data Sekolah Asal",
+} as const;
+
+const SECTION_STEP = {
+  terms: 0,
+  student: STUDENT_STEP_INDEX,
+  guardian: PARENTS_STEP_INDEX,
+  previousSchool: SCHOOL_STEP_INDEX,
+} as const;
+
+type Done = { registrationNumber: string; alreadySubmitted: boolean };
 
 function focusFirstStudentError(errors: StudentFieldErrors) {
   const key = STUDENT_ERROR_ORDER.find((k) => errors[k]);
@@ -81,6 +102,9 @@ export function RegistrationWizard() {
   const [schoolServerErrors, setSchoolServerErrors] = useState<SchoolFieldErrors>({});
   const [notice, setNotice] = useState<Notice>(null);
   const [checking, startTransition] = useTransition();
+  const [submitting, startSubmit] = useTransition();
+  const [done, setDone] = useState<Done | null>(null);
+  const [rejected, setRejected] = useState<(keyof typeof SECTION_LABEL)[]>([]);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const firstRender = useRef(true);
 
@@ -216,6 +240,36 @@ export function RegistrationWizard() {
     dispatch({ type: "next" });
   };
 
+  const handleSubmit = () => {
+    if (submitting || done) return;
+    setNotice(null);
+    setRejected([]);
+    startSubmit(async () => {
+      try {
+        const result = await submitRegistration({
+          termsAccepted: draft.termsAccepted,
+          student: draft.student,
+          guardian: draft.guardian,
+          previousSchool: draft.previousSchool,
+        });
+        if (result.status === "created" || result.status === "already_submitted") {
+          setDone({
+            registrationNumber: result.registrationNumber,
+            alreadySubmitted: result.status === "already_submitted",
+          });
+        } else if (result.status === "invalid") {
+          setRejected(result.sections);
+        } else if (result.status === "unauthenticated") {
+          setNotice("session");
+        } else {
+          setNotice("server");
+        }
+      } catch {
+        setNotice("network");
+      }
+    });
+  };
+
   const handleSelectStep = (target: number) => {
     // Block jumping past Data Siswa while it is invalid, and show why.
     if (target > STUDENT_STEP_INDEX && !studentResult.ok) {
@@ -258,6 +312,44 @@ export function RegistrationWizard() {
     setNotice(null);
     dispatch({ type: "setStudentField", name, value });
   };
+
+  if (done) {
+    return (
+      <section
+        aria-labelledby="done-heading"
+        className="flex flex-col gap-5 border-y border-border py-8"
+      >
+        <h2
+          id="done-heading"
+          tabIndex={-1}
+          ref={(el) => el?.focus()}
+          className="text-xl font-semibold tracking-tight focus:outline-none"
+        >
+          {done.alreadySubmitted
+            ? "Pendaftaran Anda sudah tercatat"
+            : "Pendaftaran berhasil dikirim"}
+        </h2>
+        <p className="text-muted-foreground">
+          {done.alreadySubmitted
+            ? "Akun ini sudah memiliki pendaftaran untuk periode ini, sehingga tidak dibuat dua kali."
+            : "Data Anda sudah tersimpan."}{" "}
+          Simpan nomor pendaftaran berikut.
+        </p>
+        <p className="text-2xl font-semibold tracking-wider" aria-label="Nomor pendaftaran">
+          {done.registrationNumber}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Mengirim pendaftaran tidak berarti diterima. Keputusan penerimaan
+          ditetapkan oleh panitia sekolah.
+        </p>
+        <div>
+          <Link href="/dashboard" className={buttonVariants()}>
+            Buka dashboard
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -308,6 +400,8 @@ export function RegistrationWizard() {
           <StepReview
             draft={draft}
             onEdit={(s) => dispatch({ type: "goTo", step: s })}
+            onSubmit={handleSubmit}
+            submitting={submitting}
           />
         )}
       </section>
@@ -325,7 +419,7 @@ export function RegistrationWizard() {
             >
               Masuk kembali di tab baru
             </Link>
-            , lalu kembali ke tab ini dan tekan Lanjut. Jangan memuat ulang
+            , lalu kembali ke tab ini dan coba lagi. Jangan memuat ulang
             halaman ini karena isian akan hilang.
           </AlertDescription>
         </Alert>
@@ -333,8 +427,37 @@ export function RegistrationWizard() {
       {notice === "network" ? (
         <Alert variant="destructive">
           <AlertDescription>
-            Data belum bisa diperiksa di server. Periksa koneksi internet Anda,
-            lalu tekan Lanjut lagi. Isian Anda tidak hilang.
+            Data belum bisa diproses di server. Periksa koneksi internet Anda,
+            lalu coba lagi. Isian Anda tidak hilang. Jika Anda baru saja menekan
+            Kirim Pendaftaran, buka dashboard untuk memastikan apakah pendaftaran
+            sudah tercatat sebelum mengirim ulang.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {notice === "server" ? (
+        <Alert variant="destructive">
+          <AlertTitle>Pendaftaran belum tersimpan</AlertTitle>
+          <AlertDescription>
+            Terjadi kendala di server. Isian Anda tidak hilang; coba kirim lagi
+            beberapa saat lagi.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+      {rejected.length > 0 ? (
+        <Alert variant="destructive">
+          <AlertTitle>Data tidak lolos pemeriksaan server</AlertTitle>
+          <AlertDescription>
+            Periksa kembali bagian berikut dengan tombol Ubah:{" "}
+            {rejected.map((k) => SECTION_LABEL[k]).join(", ")}.
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-3"
+              onClick={() => dispatch({ type: "goTo", step: SECTION_STEP[rejected[0]] })}
+            >
+              Buka {SECTION_LABEL[rejected[0]]}
+            </Button>
           </AlertDescription>
         </Alert>
       ) : null}
@@ -343,7 +466,7 @@ export function RegistrationWizard() {
         <Button
           variant="outline"
           onClick={() => dispatch({ type: "back" })}
-          disabled={step === 0 || checking}
+          disabled={step === 0 || checking || submitting}
         >
           <ArrowLeft aria-hidden="true" />
           Kembali

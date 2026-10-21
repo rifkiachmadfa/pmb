@@ -1,5 +1,11 @@
 # Project Changelog
 
+## P5-1 — Konfirmasi + penyimpanan pendaftaran (2026-10-22) — IMPLEMENTED; persistence TESTED on local PostgreSQL 16 (32 checks); signed-in end-to-end and browser interaction UNTESTED
+- Step 5 shows the full read-only summary with an Ubah button per section, a confirmation checkbox and "Kirim Pendaftaran". New server action `submitRegistration` re-validates the whole payload with the shared Zod schemas, takes the owner from the verified session only, and writes Registration (SUBMITTED), StudentData, ParentGuardian rows, PreviousSchool and one `NotificationDelivery` (REGISTRATION_CREATED, PENDING) in ONE transaction. Repeat/parallel submits return the existing registration (unique `ownerId + admissionPeriod`).
+- Migration `20261022100000_registration_persistence` (additive, nullable): `registrations.chosen_major`, `parent_guardians.birth_year`. `src/config/admission.ts` holds `ADMISSION_PERIOD` and `TERMS_VERSION`.
+- `/pendaftaran` redirects to `/dashboard` when the account already submitted; the dashboard shows the account's own registration (number, name, major, time). Payment/admission statuses still absent (Phases 6/8). No sending of WhatsApp yet (Phase 7): only the outbox row is created.
+- Decision: ADR-024 (registration number format, one-shot submit, in-memory draft) — PROPOSED.
+
 ## P4-2 — Data Sekolah Asal + Jurusan (2026-10-22) — IMPLEMENTED, PARTLY TESTED in sandbox (typecheck/lint/build + 26 schema checks + SSR HTML check; browser interaction UNTESTED)
 - Step 4 now has the owner's 5 fields (asal sekolah, status, alamat, tahun lulus, jurusan). New `school-schema.ts` (shared Zod), server action `validateSchoolStep`, UI `step-school.tsx`. Draft/reducer/wizard/review typed and gated (leaving step 4 needs a valid draft).
 - Removed unused `step-placeholder.tsx` and `DraftSection`. Decisions/assumptions: ADR-023 (PROPOSED). No Prisma change (Jurusan has no column; recorded for Phase 5). Phase 4 field work complete; all five wizard steps now have content.

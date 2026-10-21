@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { PageContainer } from "@/components/layout/page-container";
 import { requireAccount } from "@/server/auth/session";
+import { getOwnRegistration } from "@/server/registration/queries";
 import { RegistrationWizard } from "@/features/registration/components/registration-wizard";
 
 export const metadata: Metadata = {
@@ -9,11 +11,14 @@ export const metadata: Metadata = {
 };
 
 /**
- * Wizard skeleton. Requires a signed-in account (Google via Supabase Auth).
- * No data is persisted or sent yet.
+ * Registration wizard. Requires a signed-in account (Google via Supabase Auth).
+ * An account that already submitted is sent to the dashboard: one registration
+ * per account per period, and the submitted record is shown there.
+ * The draft itself is kept in memory only; it is stored once, on submit.
  */
 export default async function PendaftaranPage() {
-  await requireAccount("/pendaftaran");
+  const account = await requireAccount("/pendaftaran");
+  if (await getOwnRegistration(account.id)) redirect("/dashboard");
   return (
     <PageContainer className="flex flex-col gap-8">
       <header className="flex flex-col gap-1">

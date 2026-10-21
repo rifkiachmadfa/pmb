@@ -121,3 +121,14 @@ Status: APPROVED (owner: Google-only for simplicity); implementation UNVERIFIED 
 - Prisma mapping for Phase 5: schoolName -> `PreviousSchool.schoolName`, schoolStatus -> `ownership` (store as given), schoolAddress -> `streetAddress`, graduationYear -> `graduationYear`. OPEN: the chosen major (Jurusan) has NO column anywhere (it is registration data, not school data); needs a reviewed migration (e.g. `Registration.chosenMajor`). Schema NOT changed in P4-2.
 - Cleanup: unused `step-placeholder.tsx` and `DraftSection` type removed (all five steps now have real content).
 
+## ADR-024 — Registration persistence (P5-1; PROPOSED, awaiting owner/school approval)
+- Persistence happens ONCE, at "Kirim Pendaftaran" (step 5). Steps 2-4 stay validate-only and the draft stays in browser memory (no localStorage: personal data). Consequence: reloading before submitting loses the draft; after submitting nothing is lost. Per-step server drafts (`Registration.status = DRAFT`, `lastCompletedStep`) remain possible later if the owner wants them; the current code refuses to treat an unexpected DRAFT row as submitted.
+- Everything is written in one Prisma interactive transaction, including a `NotificationDelivery` outbox row (`REGISTRATION_CREATED`, `PENDING`, dedupe key `registration:<id>:REGISTRATION_CREATED`). A provider can never fail the registration because nothing is sent here (Phase 7 sends).
+- Duplicate protection = DB unique `(owner_id, admission_period)` (ADR-018). A concurrent/repeated submit gets `already_submitted` with the original number. One registration per account per period is still an unapproved business assumption.
+- Registration number (format OPEN in schema): `PMB-XXXX-XXXX`, random from 31 unambiguous characters, unique-constrained, retried on collision. Random, not sequential, so numbers cannot be enumerated. Owner/school may prefer another format.
+- Terms: server stores `termsAcceptedAt` + `termsVersion` (`TERMS_VERSION` in `src/config/admission.ts`, currently `2026-10-22-draft`). Bump it when ADR-013 wording is approved.
+- Schema additions (additive, nullable): `Registration.chosenMajor` (Jurusan label; promote to enum once the major list is approved) and `ParentGuardian.birthYear`. Mapping: father/mother/guardian -> FATHER/MOTHER/GUARDIAN rows (guardian row omitted when "no guardian"); schoolStatus -> `PreviousSchool.ownership`; schoolAddress -> `streetAddress`.
+- Ownership: the owner id is never read from the payload; extra payload keys (`ownerId`, `status`, `admissionStatus`, `registrationNumber`) are ignored. Reads (`getOwnRegistration`) filter by `ownerId`.
+- Logging: the action logs only error name + code (Prisma messages may embed submitted values).
+- No edit-after-submit flow exists; the UI says so. Whether/when applicants may edit is OPEN.
+

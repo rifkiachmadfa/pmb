@@ -143,6 +143,9 @@ model Registration {
   // wording of term 3 must be revised (ADR-013).
   termsAcceptedAt    DateTime?          @map("terms_accepted_at") @db.Timestamptz(3)
   termsVersion       String?            @map("terms_version")
+  // Jurusan chosen in step 4 (ADR-023). Stored as the label shown on the form; becomes an
+  // enum/lookup once the school approves the official major list. Set at submission.
+  chosenMajor        String?            @map("chosen_major")
   submittedAt        DateTime?          @map("submitted_at") @db.Timestamptz(3)
   // Current admission outcome. History/audit lives in AdmissionDecision; both are
   // written in one transaction by the staff workflow.
@@ -245,6 +248,8 @@ model ParentGuardian {
   nik            String?
   birthPlace     String?              @map("birth_place")
   birthDate      DateTime?            @map("birth_date") @db.Date
+  // The form collects the birth YEAR only (ADR-022); birthDate stays unused/nullable.
+  birthYear      Int?                 @map("birth_year") @db.SmallInt
   education      String?
   occupation     String?
   incomeRange    String?              @map("income_range")

@@ -76,3 +76,9 @@ RLS caveat: confirm the role used in `DATABASE_URL` bypasses RLS (e.g. `postgres
 5. Payment expiry/cancel/refund (no REFUNDED status yet); Snap token storage acceptable?
 6. WhatsApp recipient: student or parent; registration-number format.
 7. Encryption-at-rest / retention for identity numbers.
+
+## P5-1 additions (2026-10-22)
+- `registrations.chosen_major` (TEXT, nullable): Jurusan chosen at step 4, stored as the form label (ADR-023/024).
+- `parent_guardians.birth_year` (SMALLINT, nullable): the form collects birth year only; `birth_date` stays unused (ADR-022).
+- Migration: `prisma/migrations/20261022100000_registration_persistence/migration.sql` (hand-written; the Prisma schema engine is not downloadable in the sandbox). Applied by `psql` on a local PostgreSQL 16 together with `20261021140415_setup`; NOT yet applied to the Supabase project.
+
