@@ -1,5 +1,11 @@
 # Project Changelog
 
+## P8-1 — Logika admin: keputusan penerimaan, izin, query baca (2026-10-22) — IMPLEMENTED (tanpa UI/rute); TESTED pada PostgreSQL 16 lokal (86 pemeriksaan + 3 mutation check) dan 17 unit test; Supabase/sesi login nyata UNTESTED
+- Atas permintaan owner "dashboard admin, fokus alur logika dahulu". Dokumen alur: `ADMIN_FLOW.md`; keputusan: ADR-028 (PROPOSED, peran belum disetujui sekolah).
+- New: `src/domain/{admission-decision,payment-summary,staff-policy}.ts` + 3 file `*.test.ts`; `src/server/admin/{guard,decide,queries}.ts`. Modified: `package.json` (skrip `test`), `tsconfig.json` (`allowImportingTsExtensions`).
+- Perilaku: keputusan penerimaan dalam satu transaksi terkunci (konflik optimistik `expectedStatus`, audit `admission_decisions`, koreksi wajib alasan, tidak boleh memutuskan milik sendiri); pembayaran tidak pernah mengubah status penerimaan; daftar/tinjauan tanpa data pribadi sensitif dan tanpa `snapToken`; antrean rekonsiliasi baca-saja.
+- Tidak ada: rute/UI/server action, perubahan skema/migrasi, dependensi baru, perubahan pada proxy.
+
 ## Docs cleanup — Phase 0-6 ditutup (2026-10-22)
 - Owner menutup Phase 0-6; Phase 7 (Fonnte) dilewati sementara; Phase 8 berikutnya.
 - `CURRENT_STATE.md` ditulis ulang ringkas (log verifikasi per task dipindah ke handoff/CHANGELOG), `ROADMAP.md` diperbarui, `PHASES.md` diberi catatan status, `ARCHITECTURE.md` status diperbarui. `DECISIONS.md`, `handoff/` dan riwayat CHANGELOG tidak diubah.

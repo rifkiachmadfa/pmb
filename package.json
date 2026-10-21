@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "node --test \"src/**/*.test.ts\"",
     "db:validate": "prisma validate",
     "db:generate": "prisma generate",
     "postinstall": "prisma generate"

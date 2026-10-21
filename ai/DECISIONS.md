@@ -161,3 +161,15 @@ Status: APPROVED (owner: Google-only for simplicity); implementation UNVERIFIED 
 - Return from e-wallet/bank pages: on mount with a PENDING attempt the card asks the server once to re-check. Owner must set the Midtrans dashboard Finish/Unfinish/Error redirect URLs to `https://<domain>/dashboard` (assumption; confirm with the real sandbox).
 - Labels (Indonesian) for NOT_STARTED/PENDING/PAID/FAILED/EXPIRED/CANCELED; FAILED/EXPIRED/CANCELED offer "Coba bayar lagi" (creates a new attempt server-side). Copy states the payment counts toward the admission fee and does not mean admission.
 - Known gaps: no server-side rate limit on `refreshPaymentStatus` (each dashboard visit with a PENDING attempt triggers one provider check); no CSP exists yet, so Phase 9 must allow `app(.sandbox).midtrans.com` when adding one.
+
+## ADR-028 — Logika admin: keputusan penerimaan, izin, dan antrean baca-saja (P8-1; PROPOSED)
+Status: PROPOSED. Dikerjakan atas permintaan owner ("dashboard admin, fokus alur logika dahulu"). Itu bukan persetujuan model peran; semua poin di bawah menunggu sekolah. Detail alur: `ai/ADMIN_FLOW.md`.
+- Hanya logika: tiga modul domain murni (`src/domain/*`) + service server (`src/server/admin/*`). Tidak ada rute, UI, server action, perubahan skema/migrasi, atau dependensi. Tidak ada jalur yang dapat dijangkau dari browser.
+- Satu peran petugas (`ADMISSION_STAFF`, sudah ada di skema) dengan semua izin; kode meminta izin lewat `can(role, permission)` supaya peran yang lebih halus cukup mengubah satu tabel. Deny by default.
+- Peran dibaca dari DB setiap permintaan dan dibaca ulang di dalam transaksi keputusan.
+- Keputusan: satu transaksi + kunci baris `registrations` (kunci yang sama dengan jalur pembayaran), konkurensi optimistik lewat `expectedStatus`, update `admission_status` dan insert `admission_decisions` bersama. Koreksi wajib alasan; petugas tidak boleh memutuskan pendaftaran akunnya sendiri; pendaftaran harus `SUBMITTED`.
+- Pembayaran hanyalah fakta baca. Opsi `requirePaidForAcceptance` ada di logika tetapi default false (pertanyaan bisnis TERBUKA).
+- Data pribadi sensitif sengaja tidak diekspos ke daftar/tinjauan; `snapToken` tidak pernah dipilih.
+- Antrean rekonsiliasi hanya baca; tidak ada kolom "selesai" (butuh keputusan kebijakan + migrasi).
+- `tsconfig.json`: `allowImportingTsExtensions` ditambahkan (proyek `noEmit`) agar `node:test` bawaan Node dapat menjalankan unit test murni tanpa dependensi baru; skrip `npm test`.
+

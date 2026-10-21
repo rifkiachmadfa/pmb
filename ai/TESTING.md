@@ -42,3 +42,8 @@ Status: strategy only; no tests are claimed to have run.
 
 ## Reporting
 Record exact commands, exit status, and relevant output summary. If a command cannot run because environment/dependency/credentials are unavailable, report NOT RUN and why. Never fabricate passing results.
+
+## Status runner (P8-1)
+- `npm test` menjalankan `src/**/*.test.ts` dengan `node:test` bawaan Node (tanpa dependensi). Saat ini hanya logika murni di `src/domain/` (17 tes). Modul yang mengimpor `server-only`, Prisma, atau alias `@/` belum dicakup runner ini.
+- Uji DB/integrasi masih skrip sementara pada PostgreSQL lokal (tidak di-commit): terapkan SQL migrasi dengan `psql`, jalankan kode asli lewat `tsx` dengan stub `server-only`. Belum ada e2e dengan sesi login nyata.
+
