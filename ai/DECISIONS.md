@@ -31,12 +31,10 @@ Status: APPROVED
 Send after registration creation and after server-verified successful payment. Delivery failures must not invalidate registration or payment.
 
 ## ADR-007 — Parent/guardian form
-Status: PROPOSED — AWAITING SCHOOL REVIEW
-Draft relationship, identity, education, occupation, income, contact, and address fields. Requiredness and options are not final.
+Status: SUPERSEDED by the owner-supplied field list (22 Okt 2026, P4-1); implemented per ADR-022. Address and email fields from the earlier draft are NOT collected.
 
 ## ADR-008 — Previous-school form
-Status: PROPOSED — AWAITING SCHOOL REVIEW
-Draft school level, name, NPSN, status if needed, address, entry/graduation years, and optional exam/diploma fields. Requiredness and options are not final.
+Status: SUPERSEDED by the owner-supplied field list (22 Okt 2026, P4-2); implemented per ADR-023. NPSN, school level, entry year, exam/diploma numbers are NOT collected.
 
 ## ADR-009 — Two-stage WhatsApp notifications
 Status: APPROVED
@@ -108,3 +106,18 @@ Status: APPROVED (owner: Google-only for simplicity); implementation UNVERIFIED 
 - Sanity bounds (not school policy): height 100-250 cm, weight 20-200 kg, distance 0-1000 km, birth order 1-30, siblings 0-30. Height/weight are integers because the schema columns are integers (precision still OPEN).
 - Browser gate: leaving Data Siswa (Lanjut or stepper) requires a valid draft; server re-validates on Lanjut. Final server validation of the whole registration happens again in Phase 5 persistence.
 - Server action never logs or echoes submitted values; responses contain only field names and fixed messages.
+
+## ADR-022 — Data Orang Tua / Wali (P4-1; field list from owner, defaults PROPOSED)
+- Field list is the owner's form: for Ayah, Ibu, Wali: NIK, Nama Lengkap, Tahun Lahir, Pendidikan, Pekerjaan, Penghasilan, No. Handphone (7 fields x 3 = 21). No address/email. Education/occupation/income options are verbatim from the form (incl. "Tdk Sekolah", "Sudah Meninggal" for Ayah only, "Telah Meninggal" for Ibu only).
+- Requiredness (interpretation of the form notes): every field must be filled. Ayah/Ibu: only No. Handphone may be "-" (stored `null`). Wali: any field may be "-" (the form says "Jika tidak ada isi dengan -").
+- PROPOSED, not school-approved: (a) Wali is all-or-nothing: either all 7 fields are "-" (no guardian, no row stored) or the 6 core fields are real values (phone may still be "-"); mixed input is rejected. (b) Wali option lists are not in the form: assumed = Ayah's list without "Sudah Meninggal", plus "-". (c) Birth year accepted 1930-2010 (4 digits). (d) NIK 16 digits; the same NIK cannot be used for two of Ayah/Ibu/Wali. (e) Phone format same as Data Siswa. (f) A deceased parent still requires NIK/name/year/income as the form lists them; income has no "not applicable" option.
+- Same architecture as ADR-021: pure Zod module `guardian-schema.ts` shared by browser and server action `validateParentsStep` (verifies session, no storage, no logging, no value echo). Leaving step 3 requires a valid draft.
+- OPEN for Phase 5: Prisma `ParentGuardian` has `birthDate` (and unused `birthPlace`, `email`, address columns) but the form collects only birth YEAR. Needs a reviewed migration (e.g. add `birthYear SmallInt`) once the owner approves; schema was deliberately NOT changed in P4-1 because migration `20261021140415_setup` may already be applied.
+
+## ADR-023 — Data Sekolah Asal + Jurusan (P4-2; field list from owner, defaults PROPOSED)
+- Field list is the owner's form, all required: Asal Sekolah, Status Sekolah (NEGERI/SWASTA), Alamat Sekolah, Tahun Lulus (2026 down to 2010), Jurusan. Options verbatim from the form.
+- PROPOSED, not school-approved: (a) the form's run-on major list is split into three: Teknik Kendaraan Ringan Otomotif, Teknik Komputer dan Jaringan, Otomatisasi Tata Kelola Perkantoran; (b) school name: letters/digits/space and `. , ' ( ) / & -`, max 150; address: free text, max 255; (c) graduation year is a closed list, so future years and years before 2010 are rejected.
+- Same architecture as ADR-021/022: pure Zod module `school-schema.ts` shared by browser and server action `validateSchoolStep` (session check, no storage, no logging, no value echo). Leaving step 4 requires a valid draft.
+- Prisma mapping for Phase 5: schoolName -> `PreviousSchool.schoolName`, schoolStatus -> `ownership` (store as given), schoolAddress -> `streetAddress`, graduationYear -> `graduationYear`. OPEN: the chosen major (Jurusan) has NO column anywhere (it is registration data, not school data); needs a reviewed migration (e.g. `Registration.chosenMajor`). Schema NOT changed in P4-2.
+- Cleanup: unused `step-placeholder.tsx` and `DraftSection` type removed (all five steps now have real content).
+

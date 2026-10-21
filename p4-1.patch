@@ -1,0 +1,1020 @@
+diff --git a/ai/CHANGELOG.md b/ai/CHANGELOG.md
+index e7d8f39..e41dec4 100644
+--- a/ai/CHANGELOG.md
++++ b/ai/CHANGELOG.md
+@@ -1,5 +1,11 @@
+ # Project Changelog
+ 
++## P4-1 — Data Orang Tua / Wali (2026-10-22) — IMPLEMENTED, PARTLY TESTED in sandbox (typecheck/lint/build + 38 schema checks + SSR HTML check; browser interaction UNTESTED)
++- Step 3 now has the owner's 21 fields (Ayah, Ibu, Wali x NIK, nama, tahun lahir, pendidikan, pekerjaan, penghasilan, HP). New `guardian-schema.ts` (shared Zod), server action `validateParentsStep`, UI `step-parents.tsx` (button "Tidak ada wali" fills all Wali fields with "-").
++- Draft/reducer/wizard/review: typed parents draft, gate on leaving step 3 (Lanjut, stepper, goTo), review shows completeness. `student-schema.ts` only exports 4 existing helpers (no behavior change).
++- Step 4 (Data Sekolah Asal) stays a placeholder: its field list has not been provided.
++- Decisions/assumptions: ADR-022 (PROPOSED). No Prisma schema/migration change (birthYear vs birthDate mismatch recorded for Phase 5).
++
+ ## P3-1 — Data Siswa fields and validation (2026-10-22) — IMPLEMENTED, TESTED in sandbox (typecheck/lint/build + schema checks + Playwright)
+ - Step 2 now has the full owner-supplied field list in six sections (identity, address, KPS/KIP, family/physical, residence/transport, contact). New `ui/field`, `ui/select`, `ui/radio` primitives.
+ - `student-schema.ts`: shared Zod validation + normalization (strings for NISN/NIK/KK/akta/phones/postal code, `-` convention, real-date check). `actions.ts`: server action `validateStudentStep` (session check + Zod, no storage, no logging).
+diff --git a/ai/CURRENT_STATE.md b/ai/CURRENT_STATE.md
+index 8b9d00e..46b2f47 100644
+--- a/ai/CURRENT_STATE.md
++++ b/ai/CURRENT_STATE.md
+@@ -13,14 +13,15 @@ PMB SMK Yadika Tanjungsari Sumedang, tahun ajaran 2026/2027. Branch utama `main`
+ - P2-4 (penutup Phase 2: `loading.tsx`, `error.tsx`, `not-found.tsx`, petunjuk pemulihan akun Google di `/masuk`, `ensureAccount` baca-dulu-baru-tulis, log diagnostik callback yang aman) IMPLEMENTED/TESTED di sandbox; belum di-commit owner.
+ - Diagnosis `?error=account` (22 Okt 2026): `getDb().account` undefined karena klien Prisma lokal owner kedaluwarsa (`src/generated/` di-gitignore). Perbaikan: `npx prisma generate` + hapus `.next`. Hasil login setelah perbaikan dilaporkan owner berhasil, tetapi belum ada log bukti.
+ - P3-1 (Data Siswa: 35 field, skema Zod bersama `student-schema.ts`, server action `validateStudentStep`, UI `step-student.tsx`) IMPLEMENTED/TESTED di sandbox; belum di-commit owner. Asumsi format/opsi/aturan KPS-KIP = ADR-021 (PROPOSED).
+-- Belum tersedia: field form orang tua/sekolah asal, persistence pendaftaran, isi dashboard (status), integrasi Midtrans/Fonnte, dan workflow admin.
++- P4-1 (Data Orang Tua / Wali: 21 field Ayah/Ibu/Wali, `guardian-schema.ts`, server action `validateParentsStep`, UI `step-parents.tsx`) IMPLEMENTED; sebagian TESTED di sandbox; belum di-commit owner. Asumsi = ADR-022 (PROPOSED). Prisma `ParentGuardian` punya `birthDate`, form hanya Tahun Lahir: perlu migrasi di Phase 5 (belum diubah).
++- Belum tersedia: field form sekolah asal (daftar field belum diberikan), persistence pendaftaran, isi dashboard (status), integrasi Midtrans/Fonnte, dan workflow admin.
+ - `prisma/schema.prisma` memiliki model domain, tetapi status migrasi/koneksi database perlu diverifikasi sebelum mengandalkannya. Jangan jalankan migrasi ke database bersama tanpa persetujuan.
+ - Auth provider: ADR-012 APPROVED (Supabase Auth, Google saja); implementasi ADR-020.
+ - `phase1.patch` dan `p2-1.patch` ada di repository. Jangan hapus atau menerapkan ulang otomatis; periksa apakah diperlukan sebelum tindakan apa pun.
+ - Folder dokumentasi adalah `ai/`, bukan `.ai/`.
+ 
+ ## Langkah kerja berikutnya
+-Owner: terapkan/commit P2-4, konfirmasi alur masuk (masuk -> `/dashboard` -> baris `accounts` -> Keluar -> `/pendaftaran` terlempar ke `/masuk`) dan tinjau tampilan; setelah itu Phase 2 ditandai DONE. Phase 3: owner tinjau tampilan Data Siswa dan konfirmasi asumsi ADR-021 (opsi agama/tempat tinggal, aturan `-` KPS/KIP, batas tinggi/berat). Berikutnya Phase 4 hanya setelah daftar field orang tua/wali dan sekolah asal disetujui. Jangan menambahkan penyimpanan database, pembayaran, atau notifikasi sebelum fasenya.
++Owner: terapkan/commit P2-4, konfirmasi alur masuk (masuk -> `/dashboard` -> baris `accounts` -> Keluar -> `/pendaftaran` terlempar ke `/masuk`) dan tinjau tampilan; setelah itu Phase 2 ditandai DONE. Phase 3: owner tinjau tampilan Data Siswa dan konfirmasi asumsi ADR-021 (opsi agama/tempat tinggal, aturan `-` KPS/KIP, batas tinggi/berat). Phase 4: owner tinjau tampilan Data Orang Tua / Wali dan konfirmasi asumsi ADR-022 (aturan Wali semua-atau-tidak, opsi Wali, rentang tahun 1930-2010, NIK kembar); lalu kirim daftar field Data Sekolah Asal untuk P4-2. Jangan menambahkan penyimpanan database, pembayaran, atau notifikasi sebelum fasenya.
+ 
+ ## Verifikasi P2-2 (22 Okt 2026, sandbox)
+ - Dijalankan: `npm ci` (perlu `PRISMA_SCHEMA_ENGINE_BINARY=/bin/true` karena `binaries.prisma.sh` tidak terjangkau), `npm run typecheck`, `npm run lint`, `npm run build` — semuanya lolos.
+@@ -43,3 +44,7 @@ Ini ringkasan operasional, bukan bukti semua tes masih lolos. Periksa kode/tes y
+ - Dijalankan: `npm ci`, `npm run typecheck`, `npm run lint`, `npm run build` (lolos). Skrip uji skema ad-hoc (14 kelompok: normalisasi, wajib isi, digit, tanggal mustahil, KPS/KIP, rentang angka, telepon, email, input tak tepercaya, pesan error tidak memuat nilai) lolos. Playwright/Chromium terhadap `next start` dengan halaman uji sementara (sudah dihapus): 26/26 pemeriksaan lolos (desktop 1280px + mobile 375px: ringkasan error, fokus ke field pertama yang salah, KPS/KIP bersyarat, tanggal 31 Feb, draft bertahan saat Kembali/Lanjut, tanpa overflow, tanpa error konsol).
+ - Server action tanpa sesi -> `unauthenticated` (notifikasi sesi berakhir tampil, draft tetap).
+ - Belum: jalur server action dengan sesi Google sungguhan (status `ok` -> lanjut), unit test runner (belum ada), pembaca layar, browser lain, perangkat nyata, penyimpanan ke database (Phase 5).
++
++## Verifikasi P4-1 (22 Okt 2026, sandbox)
++- Dijalankan: `npm ci`, `npm run typecheck`, `npm run lint`, `npm run build` (lolos). Skrip uji skema ad-hoc via `tsx` (38 pemeriksaan: wajib isi, "-" per peran, Wali semua-atau-tidak, NIK kembar, rentang tahun, opsi salah peran, normalisasi HP, input tak tepercaya, pesan tidak memuat nilai) lolos. `next start` + halaman uji sementara (sudah dihapus): HTML server memuat 21 kontrol, id unik, 21 label, 21 `aria-required`, opsi per peran benar.
++- Belum: interaksi browser (Chromium tidak bisa diunduh di sandbox), jalur server action dengan sesi Google sungguhan, unit test runner, pembaca layar, perangkat nyata, penyimpanan database (Phase 5).
+diff --git a/ai/DECISIONS.md b/ai/DECISIONS.md
+index 13b7197..690beb8 100644
+--- a/ai/DECISIONS.md
++++ b/ai/DECISIONS.md
+@@ -31,8 +31,7 @@ Status: APPROVED
+ Send after registration creation and after server-verified successful payment. Delivery failures must not invalidate registration or payment.
+ 
+ ## ADR-007 — Parent/guardian form
+-Status: PROPOSED — AWAITING SCHOOL REVIEW
+-Draft relationship, identity, education, occupation, income, contact, and address fields. Requiredness and options are not final.
++Status: SUPERSEDED by the owner-supplied field list (22 Okt 2026, P4-1); implemented per ADR-022. Address and email fields from the earlier draft are NOT collected.
+ 
+ ## ADR-008 — Previous-school form
+ Status: PROPOSED — AWAITING SCHOOL REVIEW
+@@ -108,3 +107,10 @@ Status: APPROVED (owner: Google-only for simplicity); implementation UNVERIFIED
+ - Sanity bounds (not school policy): height 100-250 cm, weight 20-200 kg, distance 0-1000 km, birth order 1-30, siblings 0-30. Height/weight are integers because the schema columns are integers (precision still OPEN).
+ - Browser gate: leaving Data Siswa (Lanjut or stepper) requires a valid draft; server re-validates on Lanjut. Final server validation of the whole registration happens again in Phase 5 persistence.
+ - Server action never logs or echoes submitted values; responses contain only field names and fixed messages.
++
++## ADR-022 — Data Orang Tua / Wali (P4-1; field list from owner, defaults PROPOSED)
++- Field list is the owner's form: for Ayah, Ibu, Wali: NIK, Nama Lengkap, Tahun Lahir, Pendidikan, Pekerjaan, Penghasilan, No. Handphone (7 fields x 3 = 21). No address/email. Education/occupation/income options are verbatim from the form (incl. "Tdk Sekolah", "Sudah Meninggal" for Ayah only, "Telah Meninggal" for Ibu only).
++- Requiredness (interpretation of the form notes): every field must be filled. Ayah/Ibu: only No. Handphone may be "-" (stored `null`). Wali: any field may be "-" (the form says "Jika tidak ada isi dengan -").
++- PROPOSED, not school-approved: (a) Wali is all-or-nothing: either all 7 fields are "-" (no guardian, no row stored) or the 6 core fields are real values (phone may still be "-"); mixed input is rejected. (b) Wali option lists are not in the form: assumed = Ayah's list without "Sudah Meninggal", plus "-". (c) Birth year accepted 1930-2010 (4 digits). (d) NIK 16 digits; the same NIK cannot be used for two of Ayah/Ibu/Wali. (e) Phone format same as Data Siswa. (f) A deceased parent still requires NIK/name/year/income as the form lists them; income has no "not applicable" option.
++- Same architecture as ADR-021: pure Zod module `guardian-schema.ts` shared by browser and server action `validateParentsStep` (verifies session, no storage, no logging, no value echo). Leaving step 3 requires a valid draft.
++- OPEN for Phase 5: Prisma `ParentGuardian` has `birthDate` (and unused `birthPlace`, `email`, address columns) but the form collects only birth YEAR. Needs a reviewed migration (e.g. add `birthYear SmallInt`) once the owner approves; schema was deliberately NOT changed in P4-1 because migration `20261021140415_setup` may already be applied.
+diff --git a/ai/ROADMAP.md b/ai/ROADMAP.md
+index 6e4dd52..3e00ea2 100644
+--- a/ai/ROADMAP.md
++++ b/ai/ROADMAP.md
+@@ -8,7 +8,7 @@ Statuses: `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `COMPLETED`, `VERIFICATION_RE
+ | 1 | Next.js foundation, TypeScript, UI setup, Supabase/Postgres and Prisma baseline | VERIFICATION_REQUIRED (code done; DB connection + shadcn CLI unverified) |
+ | 2 | Responsive shell, auth screens, five-step registration wizard skeleton | READY TO CLOSE (P2-1..P2-4 IMPLEMENTED; sandbox checks pass; waiting for owner to confirm signed-in login end-to-end and visual review) |
+ | 3 | Student data fields and validation | VERIFICATION_REQUIRED (P3-1 IMPLEMENTED/TESTED in sandbox; signed-in server round trip untested; assumptions in ADR-021 need school approval) |
+-| 4 | Parent/guardian and previous-school forms after review | NOT_STARTED |
++| 4 | Parent/guardian and previous school | IN PROGRESS (P4-1 parent/guardian IMPLEMENTED, partly tested; previous-school field list not yet provided) |
+ | 5 | Confirmation, registration persistence, ownership and dashboard foundation | NOT_STARTED |
+ | 6 | Midtrans transaction creation, webhook verification, payment state machine | NOT_STARTED |
+ | 7 | Fonnte notifications at registration and verified-payment events | NOT_STARTED |
+@@ -20,7 +20,7 @@ Statuses: `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `COMPLETED`, `VERIFICATION_RE
+ A phase is COMPLETED only when its acceptance criteria are satisfied, relevant checks are executed, actual evidence is recorded, and documentation is updated. If code exists but required verification is unavailable, use VERIFICATION_REQUIRED. Do not advance past unresolved dependencies without owner approval.
+ 
+ ## Current focus
+-P3-1 (Data Siswa fields + shared Zod validation + server action `validateStudentStep`) IMPLEMENTED/TESTED in sandbox, awaiting owner review/commit and school confirmation of ADR-021. Next: Phase 4 only after the owner/school approve parent/guardian and previous-school field lists.
++P3-1 (Data Siswa fields + shared Zod validation + server action `validateStudentStep`) IMPLEMENTED/TESTED in sandbox, awaiting owner review/commit and school confirmation of ADR-021. P4-1 (Data Orang Tua / Wali, ADR-022) IMPLEMENTED, awaiting owner review/commit. Next: owner supplies the Data Sekolah Asal field list (P4-2).
+ 
+ P2-1 (design tokens, base components, shared layout) IMPLEMENTED/TESTED, awaiting owner visual review and commit. P2-2 (five-step wizard skeleton at `/pendaftaran`, local draft, terms gate) IMPLEMENTED/TESTED, awaiting owner review and commit. P2-3 (Google-only auth via Supabase, `/masuk`, protected `/pendaftaran` + `/dashboard`) IMPLEMENTED, awaiting owner Supabase/Google setup and end-to-end check. P2-4 (closing: loading/error/not-found states, Google account-recovery hint on `/masuk`, read-before-write `ensureAccount`, safe callback diagnostics) IMPLEMENTED/TESTED in sandbox. Phase 2 is marked DONE only after the owner confirms the signed-in flow (sign in -> `/dashboard` -> `accounts` row -> Keluar) and visual review; until then it is READY TO CLOSE.
+ 
+diff --git a/ai/handoff/P4-1.md b/ai/handoff/P4-1.md
+new file mode 100644
+index 0000000..e5ba294
+--- /dev/null
++++ b/ai/handoff/P4-1.md
+@@ -0,0 +1,26 @@
++# Handoff P4-1 — Data Orang Tua / Wali
++
++## Task
++- Phase: 4 | Task ID: P4-1 | Date: 2026-10-22 | Branch: `main` @ `a98defa` + uncommitted changes (nothing committed by Claude)
++
++## Summary
++- Step 3 implemented with the owner's 21 fields (Ayah, Ibu, Wali), shared Zod validation, server action re-validation, typed draft, and gating. Step 4 (Sekolah Asal) untouched: no field list yet.
++
++## Files
++### Created
++- `src/features/registration/guardian-schema.ts`, `src/features/registration/components/step-parents.tsx`, `ai/handoff/P4-1.md`
++### Modified
++- `src/features/registration/actions.ts` (+`validateParentsStep`), `draft.ts`, `steps.ts` (+`PARENTS_STEP_INDEX`), `student-schema.ts` (4 helpers now exported, no logic change), `components/registration-wizard.tsx`, `components/step-review.tsx`
++- `ai/DECISIONS.md` (ADR-007 superseded, ADR-022), `CHANGELOG.md`, `ROADMAP.md`, `CURRENT_STATE.md`
++### Deleted
++- none (temporary `src/app/qa-parents` created and removed)
++
++## Verification
++- Run: typecheck, lint, build, 38 ad-hoc schema checks, SSR HTML inspection. Not run: browser interaction, signed-in server round trip, unit tests, screen reader, DB.
++
++## Decisions / risks
++- ADR-022 assumptions need school approval (Wali all-or-nothing rule, Wali option lists, year range 1930-2010, duplicate-NIK rule).
++- Prisma mismatch: `ParentGuardian.birthDate` vs form's birth year; fix with a reviewed migration in Phase 5.
++
++## Next task
++- Owner reviews/commits; sends the Data Sekolah Asal field list -> P4-2.
+diff --git a/src/features/registration/actions.ts b/src/features/registration/actions.ts
+index ca163fb..77bfc77 100644
+--- a/src/features/registration/actions.ts
++++ b/src/features/registration/actions.ts
+@@ -1,6 +1,7 @@
+ "use server";
+ 
+ import { getSessionUser } from "@/server/auth/session";
++import { validateParentsDraft, type ParentsFieldErrors } from "./guardian-schema";
+ import { validateStudentDraft, type StudentFieldErrors } from "./student-schema";
+ 
+ export type ValidateStudentResult =
+@@ -27,3 +28,26 @@ export async function validateStudentStep(
+     ? { status: "ok" }
+     : { status: "invalid", errors: result.errors };
+ }
++
++export type ValidateParentsResult =
++  | { status: "ok" }
++  | { status: "invalid"; errors: ParentsFieldErrors }
++  | { status: "unauthenticated" };
++
++/**
++ * Server-side check of the Data Orang Tua / Wali step (Phase 4). Validates only;
++ * nothing is stored (persistence is Phase 5). Same rules as the student step:
++ * session verified here, payload never logged, response carries field names and
++ * fixed messages only.
++ */
++export async function validateParentsStep(
++  input: unknown,
++): Promise<ValidateParentsResult> {
++  const user = await getSessionUser();
++  if (!user) return { status: "unauthenticated" };
++
++  const result = validateParentsDraft(input);
++  return result.ok
++    ? { status: "ok" }
++    : { status: "invalid", errors: result.errors };
++}
+diff --git a/src/features/registration/components/registration-wizard.tsx b/src/features/registration/components/registration-wizard.tsx
+index 437a2df..ea97005 100644
+--- a/src/features/registration/components/registration-wizard.tsx
++++ b/src/features/registration/components/registration-wizard.tsx
+@@ -13,10 +13,17 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
+ 
+ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+ import { Button } from "@/components/ui/button";
+-import { validateStudentStep } from "../actions";
++import { validateParentsStep, validateStudentStep } from "../actions";
+ import { initialWizardState, wizardReducer } from "../draft";
++import {
++  PARENTS_FIELDS,
++  validateParentsDraft,
++  type ParentsFieldErrors,
++  type ParentsFieldName,
++} from "../guardian-schema";
+ import {
+   LAST_STEP_INDEX,
++  PARENTS_STEP_INDEX,
+   REGISTRATION_STEPS,
+   STUDENT_STEP_INDEX,
+ } from "../steps";
+@@ -26,6 +33,7 @@ import {
+   type StudentFieldErrors,
+   type StudentFieldName,
+ } from "../student-schema";
++import { StepParents } from "./step-parents";
+ import { StepPlaceholder } from "./step-placeholder";
+ import { StepReview } from "./step-review";
+ import { StepStudent } from "./step-student";
+@@ -41,6 +49,11 @@ function focusFirstStudentError(errors: StudentFieldErrors) {
+   document.getElementById(id)?.focus();
+ }
+ 
++function focusFirstParentsError(errors: ParentsFieldErrors) {
++  const key = PARENTS_FIELDS.find((k) => errors[k]);
++  if (key) document.getElementById(`parents-${key}`)?.focus();
++}
++
+ /**
+  * Five-step wizard. All steps render inside this one component so the draft
+  * (held in the reducer) survives back/next navigation. State is in memory only.
+@@ -50,6 +63,8 @@ export function RegistrationWizard() {
+   const [termsError, setTermsError] = useState(false);
+   const [studentShowAll, setStudentShowAll] = useState(false);
+   const [serverErrors, setServerErrors] = useState<StudentFieldErrors>({});
++  const [parentsShowAll, setParentsShowAll] = useState(false);
++  const [parentsServerErrors, setParentsServerErrors] = useState<ParentsFieldErrors>({});
+   const [notice, setNotice] = useState<Notice>(null);
+   const [checking, startTransition] = useTransition();
+   const headingRef = useRef<HTMLHeadingElement>(null);
+@@ -67,6 +82,15 @@ export function RegistrationWizard() {
+     ...(studentResult.ok ? {} : studentResult.errors),
+   };
+ 
++  const parentsResult = useMemo(
++    () => validateParentsDraft(draft.guardian),
++    [draft.guardian],
++  );
++  const parentsErrors: ParentsFieldErrors = {
++    ...parentsServerErrors,
++    ...(parentsResult.ok ? {} : parentsResult.errors),
++  };
++
+   // Move focus to the new step heading so keyboard/screen-reader users land on it.
+   useEffect(() => {
+     if (firstRender.current) {
+@@ -112,6 +136,33 @@ export function RegistrationWizard() {
+       return;
+     }
+ 
++    if (step === PARENTS_STEP_INDEX) {
++      setNotice(null);
++      if (!parentsResult.ok) {
++        setParentsShowAll(true);
++        focusFirstParentsError(parentsResult.errors);
++        return;
++      }
++      startTransition(async () => {
++        try {
++          const result = await validateParentsStep(draft.guardian);
++          if (result.status === "ok") {
++            setParentsServerErrors({});
++            dispatch({ type: "next" });
++          } else if (result.status === "unauthenticated") {
++            setNotice("session");
++          } else {
++            setParentsServerErrors(result.errors);
++            setParentsShowAll(true);
++            focusFirstParentsError(result.errors);
++          }
++        } catch {
++          setNotice("network");
++        }
++      });
++      return;
++    }
++
+     dispatch({ type: "next" });
+   };
+ 
+@@ -122,9 +173,20 @@ export function RegistrationWizard() {
+       dispatch({ type: "goTo", step: STUDENT_STEP_INDEX });
+       return;
+     }
++    if (target > PARENTS_STEP_INDEX && !parentsResult.ok) {
++      setParentsShowAll(true);
++      dispatch({ type: "goTo", step: PARENTS_STEP_INDEX });
++      return;
++    }
+     dispatch({ type: "goTo", step: target });
+   };
+ 
++  const handleParentsChange = (name: ParentsFieldName, value: string) => {
++    if (Object.keys(parentsServerErrors).length > 0) setParentsServerErrors({});
++    setNotice(null);
++    dispatch({ type: "setParentsField", name, value });
++  };
++
+   const handleTermsChange = (accepted: boolean) => {
+     if (accepted) setTermsError(false);
+     dispatch({ type: "setTermsAccepted", accepted });
+@@ -166,10 +228,15 @@ export function RegistrationWizard() {
+           />
+         )}
+         {current.id === "data-orang-tua" && (
+-          <StepPlaceholder title="Data Orang Tua / Wali" phase="Phase 4" />
++          <StepParents
++            values={draft.guardian}
++            errors={parentsErrors}
++            showAllErrors={parentsShowAll}
++            onChange={handleParentsChange}
++          />
+         )}
+         {current.id === "data-sekolah-asal" && (
+-          <StepPlaceholder title="Data Sekolah Asal" phase="Phase 4" />
++          <StepPlaceholder title="Data Sekolah Asal" phase="Phase 4, menunggu daftar field" />
+         )}
+         {current.id === "konfirmasi" && (
+           <StepReview
+diff --git a/src/features/registration/components/step-parents.tsx b/src/features/registration/components/step-parents.tsx
+new file mode 100644
+index 0000000..6b0ed92
+--- /dev/null
++++ b/src/features/registration/components/step-parents.tsx
+@@ -0,0 +1,213 @@
++"use client";
++
++import { useState, type ReactNode } from "react";
++
++import { Alert, AlertDescription } from "@/components/ui/alert";
++import { Button } from "@/components/ui/button";
++import { Field } from "@/components/ui/field";
++import { Input } from "@/components/ui/input";
++import { Select } from "@/components/ui/select";
++import {
++  EDUCATION_OPTIONS,
++  INCOME_OPTIONS,
++  PARENTS_FIELDS,
++  PARENT_BIRTH_YEAR_MAX,
++  PARENT_BIRTH_YEAR_MIN,
++  PARENT_ROLES,
++  PARENT_ROLE_LABEL,
++  PERSON_KEYS,
++  occupationOptions,
++  parentsFieldName,
++  type ParentRole,
++  type ParentsDraft,
++  type ParentsFieldErrors,
++  type ParentsFieldName,
++  type PersonKey,
++} from "../guardian-schema";
++
++type Props = {
++  values: ParentsDraft;
++  /** All current errors (browser + server); shown after a field is touched or after a Lanjut attempt. */
++  errors: ParentsFieldErrors;
++  showAllErrors: boolean;
++  onChange: (name: ParentsFieldName, value: string) => void;
++};
++
++const GRID = "grid gap-x-4 gap-y-5 sm:grid-cols-2";
++const KK_HINT = "Sesuai dengan Kartu Keluarga (KK).";
++
++const LABEL: Record<PersonKey, string> = {
++  nik: "NIK",
++  fullName: "Nama Lengkap",
++  birthYear: "Tahun Lahir",
++  education: "Pendidikan",
++  occupation: "Pekerjaan",
++  income: "Penghasilan",
++  mobilePhone: "No. Handphone",
++};
++
++const NO_GUARDIAN_HINT = "Jika tidak ada isi dengan -";
++
++function Section({
++  title,
++  children,
++  aside,
++}: {
++  title: string;
++  children: ReactNode;
++  aside?: ReactNode;
++}) {
++  return (
++    <fieldset className="min-w-0 border-t border-border pt-6 first:border-t-0 first:pt-0">
++      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
++        <legend className="text-base font-semibold tracking-tight">{title}</legend>
++        {aside}
++      </div>
++      <div className={GRID}>{children}</div>
++    </fieldset>
++  );
++}
++
++function hintFor(role: ParentRole, key: PersonKey): string | undefined {
++  if (role === "guardian") return NO_GUARDIAN_HINT;
++  switch (key) {
++    case "nik":
++    case "fullName":
++    case "birthYear":
++      return key === "birthYear"
++        ? `${KK_HINT} Contoh: 1975.`
++        : key === "nik"
++          ? `${KK_HINT} 16 digit.`
++          : KK_HINT;
++    case "mobilePhone":
++      return "Contoh: 081234567890. Jika tidak ada isi dengan -";
++    default:
++      return undefined;
++  }
++}
++
++/**
++ * Data Orang Tua / Wali form (Phase 4). Fully controlled by the wizard draft so
++ * values survive back/next. Errors come from the shared Zod schema.
++ */
++export function StepParents({ values, errors, showAllErrors, onChange }: Props) {
++  const [touched, setTouched] = useState<ReadonlySet<string>>(new Set());
++  const touch = (name: string) =>
++    setTouched((prev) => (prev.has(name) ? prev : new Set(prev).add(name)));
++
++  const visibleError = (name: ParentsFieldName) => {
++    const message = errors[name];
++    if (!message) return undefined;
++    return showAllErrors || touched.has(name) ? message : undefined;
++  };
++
++  const errorCount = PARENTS_FIELDS.filter((f) => errors[f]).length;
++
++  const person = (role: ParentRole, key: PersonKey) => {
++    const name = parentsFieldName(role, key);
++    const common = {
++      id: `parents-${name}`,
++      label: LABEL[key],
++      required: true,
++      hint: hintFor(role, key),
++      error: visibleError(name),
++      className: key === "fullName" ? "sm:col-span-2" : undefined,
++    };
++
++    if (key === "education" || key === "occupation" || key === "income") {
++      const options =
++        key === "education"
++          ? EDUCATION_OPTIONS
++          : key === "income"
++            ? INCOME_OPTIONS
++            : occupationOptions(role);
++      return (
++        <Field key={name} {...common}>
++          {(control) => (
++            <Select
++              {...control}
++              name={name}
++              value={values[name]}
++              onChange={(e) => onChange(name, e.target.value)}
++              onBlur={() => touch(name)}
++            >
++              <option value="">
++                {`Pilih ${LABEL[key]} ${PARENT_ROLE_LABEL[role]}`}
++              </option>
++              {role === "guardian" ? <option value="-">- (tidak ada)</option> : null}
++              {options.map((o) => (
++                <option key={o} value={o}>
++                  {o}
++                </option>
++              ))}
++            </Select>
++          )}
++        </Field>
++      );
++    }
++
++    const isGuardian = role === "guardian";
++    const numeric = key === "nik" || key === "birthYear";
++    return (
++      <Field key={name} {...common}>
++        {(control) => (
++          <Input
++            {...control}
++            name={name}
++            value={values[name]}
++            maxLength={key === "nik" ? 16 : key === "birthYear" ? 4 : key === "mobilePhone" ? 18 : 100}
++            inputMode={numeric ? "numeric" : key === "mobilePhone" ? "tel" : undefined}
++            type={key === "mobilePhone" ? "tel" : undefined}
++            autoComplete="off"
++            onChange={(e) => {
++              let v = e.target.value;
++              // Digits only, except the guardian may type "-" for "none".
++              if (numeric) v = v.replace(isGuardian ? /[^\d-]/g : /\D/g, "");
++              onChange(name, v);
++            }}
++            onBlur={() => touch(name)}
++          />
++        )}
++      </Field>
++    );
++  };
++
++  const markNoGuardian = () => {
++    for (const key of PERSON_KEYS) onChange(parentsFieldName("guardian", key), "-");
++  };
++
++  return (
++    <div className="flex flex-col gap-6">
++      <p className="text-muted-foreground">
++        Isi data sesuai Kartu Keluarga. Semua kolom wajib diisi. Tahun lahir
++        berkisar {PARENT_BIRTH_YEAR_MIN}–{PARENT_BIRTH_YEAR_MAX}. Isian yang
++        tidak ada diisi “-” (nomor HP ayah/ibu dan seluruh data wali).
++      </p>
++
++      {showAllErrors && errorCount > 0 ? (
++        <Alert variant="destructive">
++          <AlertDescription>
++            Ada {errorCount} isian yang belum benar. Periksa isian yang diberi
++            keterangan merah di bawah ini.
++          </AlertDescription>
++        </Alert>
++      ) : null}
++
++      {PARENT_ROLES.map((role) => (
++        <Section
++          key={role}
++          title={`Data ${PARENT_ROLE_LABEL[role]}`}
++          aside={
++            role === "guardian" ? (
++              <Button type="button" variant="outline" size="sm" onClick={markNoGuardian}>
++                Tidak ada wali (isi semua “-”)
++              </Button>
++            ) : null
++          }
++        >
++          {PERSON_KEYS.map((key) => person(role, key))}
++        </Section>
++      ))}
++    </div>
++  );
++}
+diff --git a/src/features/registration/components/step-review.tsx b/src/features/registration/components/step-review.tsx
+index 8bf4441..0e1d837 100644
+--- a/src/features/registration/components/step-review.tsx
++++ b/src/features/registration/components/step-review.tsx
+@@ -1,6 +1,7 @@
+ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+ import { Button } from "@/components/ui/button";
+ import type { RegistrationDraft } from "../draft";
++import { validateParentsDraft } from "../guardian-schema";
+ import { validateStudentDraft } from "../student-schema";
+ 
+ type Props = {
+@@ -24,6 +25,11 @@ function summarize(key: (typeof SECTIONS)[number]["key"], draft: RegistrationDra
+     if (validateStudentDraft(draft.student).ok) return "Lengkap";
+     return filled > 0 ? `${filled} isian terisi, belum lengkap` : "Belum ada isian";
+   }
++  if (key === "guardian") {
++    if (validateParentsDraft(draft.guardian).ok) return "Lengkap";
++    const parentFilled = Object.values(draft.guardian).filter((v) => v.trim() !== "").length;
++    return parentFilled > 0 ? `${parentFilled} isian terisi, belum lengkap` : "Belum ada isian";
++  }
+   return filled > 0 ? `${filled} isian terisi` : "Belum ada isian";
+ }
+ 
+diff --git a/src/features/registration/draft.ts b/src/features/registration/draft.ts
+index 98c9a02..b0da7e1 100644
+--- a/src/features/registration/draft.ts
++++ b/src/features/registration/draft.ts
+@@ -1,4 +1,10 @@
+-import { LAST_STEP_INDEX, STUDENT_STEP_INDEX } from "./steps";
++import {
++  emptyParentsDraft,
++  validateParentsDraft,
++  type ParentsDraft,
++  type ParentsFieldName,
++} from "./guardian-schema";
++import { LAST_STEP_INDEX, PARENTS_STEP_INDEX, STUDENT_STEP_INDEX } from "./steps";
+ import {
+   emptyStudentDraft,
+   validateStudentDraft,
+@@ -9,8 +15,8 @@ import {
+ /**
+  * Local, in-memory wizard draft.
+  *
+- * `student` is typed (Phase 3). Parent/guardian and previous school stay
+- * untyped until Phase 4 (after owner approval of their field lists).
++ * `student` (Phase 3) and `guardian` = father/mother/guardian (Phase 4) are
++ * typed. Previous school stays untyped until its field list is approved.
+  * Nothing is persisted: no localStorage (personal data), no server.
+  */
+ export type DraftSection = Record<string, string>;
+@@ -18,7 +24,7 @@ export type DraftSection = Record<string, string>;
+ export type RegistrationDraft = {
+   termsAccepted: boolean;
+   student: StudentDraft;
+-  guardian: DraftSection;
++  guardian: ParentsDraft;
+   previousSchool: DraftSection;
+ };
+ 
+@@ -32,6 +38,7 @@ export type WizardState = {
+ export type WizardAction =
+   | { type: "setTermsAccepted"; accepted: boolean }
+   | { type: "setStudentField"; name: StudentFieldName; value: string }
++  | { type: "setParentsField"; name: ParentsFieldName; value: string }
+   | { type: "next" }
+   | { type: "back" }
+   | { type: "goTo"; step: number };
+@@ -42,7 +49,7 @@ export const initialWizardState: WizardState = {
+   draft: {
+     termsAccepted: false,
+     student: emptyStudentDraft(),
+-    guardian: {},
++    guardian: emptyParentsDraft(),
+     previousSchool: {},
+   },
+ };
+@@ -53,6 +60,9 @@ const clamp = (n: number) => Math.min(Math.max(n, 0), LAST_STEP_INDEX);
+ const studentIsValid = (state: WizardState) =>
+   validateStudentDraft(state.draft.student).ok;
+ 
++const parentsAreValid = (state: WizardState) =>
++  validateParentsDraft(state.draft.guardian).ok;
++
+ export function wizardReducer(state: WizardState, action: WizardAction): WizardState {
+   switch (action.type) {
+     case "setTermsAccepted": {
+@@ -70,11 +80,21 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
+           student: { ...state.draft.student, [action.name]: action.value },
+         },
+       };
++    case "setParentsField":
++      return {
++        ...state,
++        draft: {
++          ...state.draft,
++          guardian: { ...state.draft.guardian, [action.name]: action.value },
++        },
++      };
+     case "next": {
+       // Server-independent gate: terms must be accepted to leave step 1.
+       if (!state.draft.termsAccepted) return state;
+       // Student data must be valid to leave step 2.
+       if (state.step === STUDENT_STEP_INDEX && !studentIsValid(state)) return state;
++      // Parents/guardian data must be valid to leave step 3.
++      if (state.step === PARENTS_STEP_INDEX && !parentsAreValid(state)) return state;
+       const step = clamp(state.step + 1);
+       return { ...state, step, maxStep: Math.max(state.maxStep, step) };
+     }
+@@ -84,6 +104,7 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
+       if (!state.draft.termsAccepted && action.step > 0) return state;
+       // No jumping past Data Siswa while its draft is invalid.
+       if (action.step > STUDENT_STEP_INDEX && !studentIsValid(state)) return state;
++      if (action.step > PARENTS_STEP_INDEX && !parentsAreValid(state)) return state;
+       const step = clamp(action.step);
+       // Only already-reached steps can be jumped to.
+       return step <= state.maxStep ? { ...state, step } : state;
+diff --git a/src/features/registration/guardian-schema.ts b/src/features/registration/guardian-schema.ts
+new file mode 100644
+index 0000000..b41e6e4
+--- /dev/null
++++ b/src/features/registration/guardian-schema.ts
+@@ -0,0 +1,334 @@
++import { z } from "zod";
++
++import {
++  MOBILE_RE,
++  NAME_RE,
++  collapse,
++  stripPhone,
++} from "./student-schema";
++
++/**
++ * Data Orang Tua / Wali (step 3): field list supplied by the owner (Phase 4).
++ *
++ * Pure module shared by the browser (usability validation) and the server
++ * action (the check that counts). It must not import anything server-only.
++ * Error messages never echo the submitted values.
++ *
++ * Option lists, the year range, the "-" convention for the guardian and the
++ * duplicate-NIK rule are PROPOSED defaults (ai/DECISIONS.md ADR-022). They live
++ * here so changing them is a one-file edit.
++ */
++
++/* ------------------------------ option lists ------------------------------ */
++
++/** Verbatim from the owner's form (including the "Tdk Sekolah" spelling). */
++export const EDUCATION_OPTIONS = [
++  "Tdk Sekolah",
++  "SD/MI",
++  "SMP/MTs",
++  "SMA/SMK/MA",
++  "DIPLOMA",
++  "S1",
++  "S2",
++  "S3",
++] as const;
++
++/** Order and wording follow the owner's form for each role. */
++export const FATHER_OCCUPATION_OPTIONS = [
++  "Buruh",
++  "Wirausaha",
++  "Wiraswasta",
++  "Karyawan Swasta",
++  "PNS/TNI/POLRI",
++  "Pensiunan",
++  "Nelayan",
++  "Petani",
++  "Peternak",
++  "Pedagang Besar",
++  "Pedagang Kecil",
++  "TKI",
++  "Tidak Bekerja",
++  "Sudah Meninggal",
++  "Lainnya",
++] as const;
++
++export const MOTHER_OCCUPATION_OPTIONS = [
++  "Wirausaha",
++  "Buruh",
++  "Wiraswasta",
++  "Karyawan Swasta",
++  "Pensiunan",
++  "PNS/TNI/POLRI",
++  "Petani",
++  "Nelayan",
++  "Peternak",
++  "Pedagang Besar",
++  "Pedagang Kecil",
++  "TKI",
++  "Tidak Bekerja",
++  "Telah Meninggal",
++  "Lainnya",
++] as const;
++
++/** The owner gave no list for the guardian: father's list without "Sudah Meninggal" (ADR-022). */
++export const GUARDIAN_OCCUPATION_OPTIONS = FATHER_OCCUPATION_OPTIONS.filter(
++  (o) => o !== "Sudah Meninggal",
++);
++
++export const INCOME_OPTIONS = [
++  "< 500rb",
++  "500-1jt",
++  "1jt-3jt",
++  "3jt-5jt",
++  "5jt-10jt",
++  ">10jt",
++] as const;
++
++export const PARENT_BIRTH_YEAR_MIN = 1930;
++export const PARENT_BIRTH_YEAR_MAX = 2010;
++
++/* --------------------------------- fields --------------------------------- */
++
++export const PARENT_ROLES = ["father", "mother", "guardian"] as const;
++export type ParentRole = (typeof PARENT_ROLES)[number];
++
++export const PERSON_KEYS = [
++  "nik",
++  "fullName",
++  "birthYear",
++  "education",
++  "occupation",
++  "income",
++  "mobilePhone",
++] as const;
++export type PersonKey = (typeof PERSON_KEYS)[number];
++
++export type ParentsFieldName = `${ParentRole}${Capitalize<PersonKey>}`;
++
++export const parentsFieldName = (role: ParentRole, key: PersonKey) =>
++  `${role}${key[0].toUpperCase()}${key.slice(1)}` as ParentsFieldName;
++
++/** Every draft field, in screen order (father, mother, guardian). */
++export const PARENTS_FIELDS: readonly ParentsFieldName[] = PARENT_ROLES.flatMap(
++  (role) => PERSON_KEYS.map((key) => parentsFieldName(role, key)),
++);
++
++/** Form state: every value is a string exactly as typed/selected. */
++export type ParentsDraft = Record<ParentsFieldName, string>;
++
++export const emptyParentsDraft = (): ParentsDraft =>
++  Object.fromEntries(PARENTS_FIELDS.map((f) => [f, ""])) as ParentsDraft;
++
++export type ParentsFieldErrors = Partial<Record<ParentsFieldName | "form", string>>;
++
++export const PARENT_ROLE_LABEL: Record<ParentRole, string> = {
++  father: "Ayah",
++  mother: "Ibu",
++  guardian: "Wali",
++};
++
++export const occupationOptions = (role: ParentRole): readonly string[] =>
++  role === "father"
++    ? FATHER_OCCUPATION_OPTIONS
++    : role === "mother"
++      ? MOTHER_OCCUPATION_OPTIONS
++      : GUARDIAN_OCCUPATION_OPTIONS;
++
++/** "-" means "none". Guardian: any field. Father/mother: only the phone number. */
++export const allowsDash = (role: ParentRole, key: PersonKey) =>
++  role === "guardian" || key === "mobilePhone";
++
++/* ------------------------------- validators -------------------------------- */
++
++const PICK = "Pilih salah satu pilihan.";
++const GUARDIAN_GROUP_ERROR =
++  "Lengkapi data wali, atau isi semua isian wali dengan “-” jika tidak ada wali.";
++
++const oneOf = (options: readonly string[]) =>
++  z.string({ error: PICK }).refine((v) => options.includes(v), { error: PICK });
++
++function fieldSchema(role: ParentRole, key: PersonKey) {
++  switch (key) {
++    case "nik":
++      return z
++        .string()
++        .regex(/^\d+$/, { error: "NIK hanya boleh berisi angka." })
++        .length(16, { error: "NIK harus 16 digit." });
++    case "fullName":
++      return z
++        .string()
++        .max(100, { error: "Maksimal 100 karakter." })
++        .regex(NAME_RE, { error: "Hanya huruf, spasi, dan tanda baca . , ' -" })
++        .transform(collapse);
++    case "birthYear":
++      return z
++        .string()
++        .regex(/^\d{4}$/, { error: "Tahun lahir harus 4 digit angka." })
++        .refine(
++          (v) => Number(v) >= PARENT_BIRTH_YEAR_MIN && Number(v) <= PARENT_BIRTH_YEAR_MAX,
++          {
++            error: `Tahun lahir harus antara ${PARENT_BIRTH_YEAR_MIN} dan ${PARENT_BIRTH_YEAR_MAX}.`,
++          },
++        )
++        .transform(Number);
++    case "education":
++      return oneOf(EDUCATION_OPTIONS);
++    case "occupation":
++      return oneOf(occupationOptions(role));
++    case "income":
++      return oneOf(INCOME_OPTIONS);
++    case "mobilePhone":
++      return (
++        z
++          .string()
++          .refine((v) => MOBILE_RE.test(stripPhone(v)), {
++            error: "Nomor HP tidak valid (contoh: 081234567890), atau isi “-” jika tidak ada.",
++          })
++          // Stored in local format: +62 / 62 prefix becomes 0.
++          .transform((v) => stripPhone(v).replace(/^(?:\+62|62)/, "0"))
++      );
++  }
++}
++
++const blankMessage = (role: ParentRole, key: PersonKey) =>
++  allowsDash(role, key)
++    ? "Wajib diisi. Isi “-” jika tidak ada."
++    : "Wajib diisi.";
++
++type Cell =
++  | { kind: "blank"; error: string }
++  | { kind: "dash" }
++  | { kind: "invalid"; error: string }
++  | { kind: "value"; value: string | number };
++
++function readCell(raw: Record<string, unknown>, role: ParentRole, key: PersonKey): Cell {
++  const v = raw[parentsFieldName(role, key)];
++  const value = typeof v === "string" ? v.trim() : "";
++  if (!value) return { kind: "blank", error: blankMessage(role, key) };
++  if (value === "-" && allowsDash(role, key)) return { kind: "dash" };
++  const parsed = fieldSchema(role, key).safeParse(value);
++  return parsed.success
++    ? { kind: "value", value: parsed.data as string | number }
++    : { kind: "invalid", error: parsed.error.issues[0]?.message ?? "Isian tidak valid." };
++}
++
++/* ------------------------------ public result ------------------------------ */
++
++/** One parent/guardian, shaped like the Prisma `ParentGuardian` columns. */
++export type ParentPersonInput = {
++  relationship: "FATHER" | "MOTHER" | "GUARDIAN";
++  nik: string;
++  fullName: string;
++  birthYear: number;
++  education: string;
++  occupation: string;
++  incomeRange: string;
++  /** null when the form says "-". */
++  mobilePhone: string | null;
++};
++
++export type ParentsInput = {
++  father: ParentPersonInput;
++  mother: ParentPersonInput;
++  /** null when every guardian field is "-" (no guardian). */
++  guardian: ParentPersonInput | null;
++};
++
++export type ParentsValidation =
++  | { ok: true; data: ParentsInput }
++  | { ok: false; errors: ParentsFieldErrors };
++
++const RELATIONSHIP = {
++  father: "FATHER",
++  mother: "MOTHER",
++  guardian: "GUARDIAN",
++} as const;
++
++const CORE_KEYS = PERSON_KEYS.filter((k) => k !== "mobilePhone");
++
++/**
++ * Validates the parents/guardian draft (browser or server). Reports every error
++ * at once. Accepts `unknown` because the server action receives untrusted input.
++ */
++export function validateParentsDraft(input: unknown): ParentsValidation {
++  if (typeof input !== "object" || input === null || Array.isArray(input)) {
++    return { ok: false, errors: { form: "Data tidak valid." } };
++  }
++  const raw = input as Record<string, unknown>;
++  const errors: ParentsFieldErrors = {};
++  const people: Partial<Record<ParentRole, ParentPersonInput | null>> = {};
++
++  for (const role of PARENT_ROLES) {
++    const cells = Object.fromEntries(
++      PERSON_KEYS.map((k) => [k, readCell(raw, role, k)]),
++    ) as Record<PersonKey, Cell>;
++
++    for (const key of PERSON_KEYS) {
++      const cell = cells[key];
++      if (cell.kind === "blank" || cell.kind === "invalid") {
++        errors[parentsFieldName(role, key)] = cell.error;
++      }
++    }
++
++    // Guardian is all-or-nothing: every field "-" means "no guardian".
++    let noGuardian = false;
++    if (role === "guardian") {
++      const hasBlank = PERSON_KEYS.some((k) => cells[k].kind === "blank");
++      const coreDashes = CORE_KEYS.filter((k) => cells[k].kind === "dash");
++      if (!hasBlank && coreDashes.length === CORE_KEYS.length) {
++        if (cells.mobilePhone.kind === "dash") {
++          noGuardian = true;
++        } else if (cells.mobilePhone.kind === "value") {
++          errors.guardianMobilePhone = GUARDIAN_GROUP_ERROR;
++        }
++      } else if (!hasBlank && coreDashes.length > 0) {
++        for (const key of coreDashes) {
++          errors[parentsFieldName(role, key)] = GUARDIAN_GROUP_ERROR;
++        }
++      }
++    }
++
++    if (noGuardian) {
++      people.guardian = null;
++      continue;
++    }
++
++    const ok = PERSON_KEYS.every(
++      (k) => cells[k].kind === "value" || (k === "mobilePhone" && cells[k].kind === "dash"),
++    );
++    if (!ok) continue;
++
++    const v = (k: PersonKey) => (cells[k] as { kind: "value"; value: string | number }).value;
++    people[role] = {
++      relationship: RELATIONSHIP[role],
++      nik: v("nik") as string,
++      fullName: v("fullName") as string,
++      birthYear: v("birthYear") as number,
++      education: v("education") as string,
++      occupation: v("occupation") as string,
++      incomeRange: v("income") as string,
++      mobilePhone: cells.mobilePhone.kind === "dash" ? null : (v("mobilePhone") as string),
++    };
++  }
++
++  // The same NIK cannot identify two different people (ADR-022).
++  const seen = new Map<string, ParentRole>();
++  for (const role of PARENT_ROLES) {
++    const person = people[role];
++    if (!person || errors[parentsFieldName(role, "nik")]) continue;
++    const earlier = seen.get(person.nik);
++    if (earlier) {
++      errors[parentsFieldName(role, "nik")] =
++        `NIK sama dengan NIK ${PARENT_ROLE_LABEL[earlier].toLowerCase()}. Periksa kembali.`;
++    } else {
++      seen.set(person.nik, role);
++    }
++  }
++
++  if (Object.keys(errors).length > 0) return { ok: false, errors };
++  const { father, mother } = people;
++  if (!father || !mother || people.guardian === undefined) {
++    return { ok: false, errors: { form: "Data tidak valid." } };
++  }
++  return { ok: true, data: { father, mother, guardian: people.guardian } };
++}
+diff --git a/src/features/registration/steps.ts b/src/features/registration/steps.ts
+index dd3d1ab..d5fc13c 100644
+--- a/src/features/registration/steps.ts
++++ b/src/features/registration/steps.ts
+@@ -16,6 +16,11 @@ export const STUDENT_STEP_INDEX = REGISTRATION_STEPS.findIndex(
+   (s) => s.id === "data-siswa",
+ );
+ 
++/** Index of "Data Orang Tua / Wali"; leaving it forward requires a valid draft. */
++export const PARENTS_STEP_INDEX = REGISTRATION_STEPS.findIndex(
++  (s) => s.id === "data-orang-tua",
++);
++
+ /**
+  * Official terms supplied by the owner (ai/BUSINESS_RULES.md), verbatim.
+  * Term 3 mentions receiving a password; the wording still needs school/owner
+diff --git a/src/features/registration/student-schema.ts b/src/features/registration/student-schema.ts
+index dfe6f4c..91548a6 100644
+--- a/src/features/registration/student-schema.ts
++++ b/src/features/registration/student-schema.ts
+@@ -140,14 +140,14 @@ export const STUDENT_ERROR_ORDER: readonly StudentErrorKey[] = STUDENT_FIELDS.fl
+ const REQUIRED = "Wajib diisi.";
+ const PICK = "Pilih salah satu pilihan.";
+ 
+-const NAME_RE = /^[\p{L}\p{M}][\p{L}\p{M} .,'’-]*$/u;
++export const NAME_RE = /^[\p{L}\p{M}][\p{L}\p{M} .,'’-]*$/u;
+ const CODE_RE = /^[A-Za-z0-9][A-Za-z0-9 ./-]*$/;
+-const MOBILE_RE = /^(?:\+62|62|0)8\d{8,12}$/;
++export const MOBILE_RE = /^(?:\+62|62|0)8\d{8,12}$/;
+ const LANDLINE_RE = /^\+?\d{6,15}$/;
+ const DISTANCE_RE = /^\d{1,4}(?:[.,]\d{1,2})?$/;
+ 
+-const collapse = (v: string) => v.replace(/\s+/g, " ");
+-const stripPhone = (v: string) => v.replace(/[\s().-]/g, "");
++export const collapse = (v: string) => v.replace(/\s+/g, " ");
++export const stripPhone = (v: string) => v.replace(/[\s().-]/g, "");
+ 
+ const required = () =>
+   z.string({ error: REQUIRED }).trim().min(1, { error: REQUIRED });

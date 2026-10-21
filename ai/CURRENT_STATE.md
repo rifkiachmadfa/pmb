@@ -13,14 +13,16 @@ PMB SMK Yadika Tanjungsari Sumedang, tahun ajaran 2026/2027. Branch utama `main`
 - P2-4 (penutup Phase 2: `loading.tsx`, `error.tsx`, `not-found.tsx`, petunjuk pemulihan akun Google di `/masuk`, `ensureAccount` baca-dulu-baru-tulis, log diagnostik callback yang aman) IMPLEMENTED/TESTED di sandbox; belum di-commit owner.
 - Diagnosis `?error=account` (22 Okt 2026): `getDb().account` undefined karena klien Prisma lokal owner kedaluwarsa (`src/generated/` di-gitignore). Perbaikan: `npx prisma generate` + hapus `.next`. Hasil login setelah perbaikan dilaporkan owner berhasil, tetapi belum ada log bukti.
 - P3-1 (Data Siswa: 35 field, skema Zod bersama `student-schema.ts`, server action `validateStudentStep`, UI `step-student.tsx`) IMPLEMENTED/TESTED di sandbox; belum di-commit owner. Asumsi format/opsi/aturan KPS-KIP = ADR-021 (PROPOSED).
-- Belum tersedia: field form orang tua/sekolah asal, persistence pendaftaran, isi dashboard (status), integrasi Midtrans/Fonnte, dan workflow admin.
+- P4-1 (Data Orang Tua / Wali: 21 field Ayah/Ibu/Wali, `guardian-schema.ts`, server action `validateParentsStep`, UI `step-parents.tsx`) IMPLEMENTED; sebagian TESTED di sandbox; belum di-commit owner. Asumsi = ADR-022 (PROPOSED). Prisma `ParentGuardian` punya `birthDate`, form hanya Tahun Lahir: perlu migrasi di Phase 5 (belum diubah).
+- P4-2 (Data Sekolah Asal + Jurusan: 5 field, `school-schema.ts`, server action `validateSchoolStep`, UI `step-school.tsx`) IMPLEMENTED; sebagian TESTED di sandbox; belum di-commit owner. Asumsi = ADR-023 (PROPOSED). Kolom Jurusan belum ada di Prisma (Phase 5).
+- Belum tersedia: persistence pendaftaran, isi dashboard (status), integrasi Midtrans/Fonnte, dan workflow admin.
 - `prisma/schema.prisma` memiliki model domain, tetapi status migrasi/koneksi database perlu diverifikasi sebelum mengandalkannya. Jangan jalankan migrasi ke database bersama tanpa persetujuan.
 - Auth provider: ADR-012 APPROVED (Supabase Auth, Google saja); implementasi ADR-020.
 - `phase1.patch` dan `p2-1.patch` ada di repository. Jangan hapus atau menerapkan ulang otomatis; periksa apakah diperlukan sebelum tindakan apa pun.
 - Folder dokumentasi adalah `ai/`, bukan `.ai/`.
 
 ## Langkah kerja berikutnya
-Owner: terapkan/commit P2-4, konfirmasi alur masuk (masuk -> `/dashboard` -> baris `accounts` -> Keluar -> `/pendaftaran` terlempar ke `/masuk`) dan tinjau tampilan; setelah itu Phase 2 ditandai DONE. Phase 3: owner tinjau tampilan Data Siswa dan konfirmasi asumsi ADR-021 (opsi agama/tempat tinggal, aturan `-` KPS/KIP, batas tinggi/berat). Berikutnya Phase 4 hanya setelah daftar field orang tua/wali dan sekolah asal disetujui. Jangan menambahkan penyimpanan database, pembayaran, atau notifikasi sebelum fasenya.
+Owner: terapkan/commit P2-4, konfirmasi alur masuk (masuk -> `/dashboard` -> baris `accounts` -> Keluar -> `/pendaftaran` terlempar ke `/masuk`) dan tinjau tampilan; setelah itu Phase 2 ditandai DONE. Phase 3: owner tinjau tampilan Data Siswa dan konfirmasi asumsi ADR-021 (opsi agama/tempat tinggal, aturan `-` KPS/KIP, batas tinggi/berat). Phase 4: owner tinjau tampilan Data Orang Tua / Wali dan konfirmasi asumsi ADR-022 (aturan Wali semua-atau-tidak, opsi Wali, rentang tahun 1930-2010, NIK kembar); tinjau juga Data Sekolah Asal (ADR-023: pembagian tiga jurusan, batas karakter). Setelah itu lanjut Phase 5. Jangan menambahkan penyimpanan database, pembayaran, atau notifikasi sebelum fasenya.
 
 ## Verifikasi P2-2 (22 Okt 2026, sandbox)
 - Dijalankan: `npm ci` (perlu `PRISMA_SCHEMA_ENGINE_BINARY=/bin/true` karena `binaries.prisma.sh` tidak terjangkau), `npm run typecheck`, `npm run lint`, `npm run build` — semuanya lolos.
@@ -43,3 +45,11 @@ Ini ringkasan operasional, bukan bukti semua tes masih lolos. Periksa kode/tes y
 - Dijalankan: `npm ci`, `npm run typecheck`, `npm run lint`, `npm run build` (lolos). Skrip uji skema ad-hoc (14 kelompok: normalisasi, wajib isi, digit, tanggal mustahil, KPS/KIP, rentang angka, telepon, email, input tak tepercaya, pesan error tidak memuat nilai) lolos. Playwright/Chromium terhadap `next start` dengan halaman uji sementara (sudah dihapus): 26/26 pemeriksaan lolos (desktop 1280px + mobile 375px: ringkasan error, fokus ke field pertama yang salah, KPS/KIP bersyarat, tanggal 31 Feb, draft bertahan saat Kembali/Lanjut, tanpa overflow, tanpa error konsol).
 - Server action tanpa sesi -> `unauthenticated` (notifikasi sesi berakhir tampil, draft tetap).
 - Belum: jalur server action dengan sesi Google sungguhan (status `ok` -> lanjut), unit test runner (belum ada), pembaca layar, browser lain, perangkat nyata, penyimpanan ke database (Phase 5).
+
+## Verifikasi P4-1 (22 Okt 2026, sandbox)
+- Dijalankan: `npm ci`, `npm run typecheck`, `npm run lint`, `npm run build` (lolos). Skrip uji skema ad-hoc via `tsx` (38 pemeriksaan: wajib isi, "-" per peran, Wali semua-atau-tidak, NIK kembar, rentang tahun, opsi salah peran, normalisasi HP, input tak tepercaya, pesan tidak memuat nilai) lolos. `next start` + halaman uji sementara (sudah dihapus): HTML server memuat 21 kontrol, id unik, 21 label, 21 `aria-required`, opsi per peran benar.
+- Belum: interaksi browser (Chromium tidak bisa diunduh di sandbox), jalur server action dengan sesi Google sungguhan, unit test runner, pembaca layar, perangkat nyata, penyimpanan database (Phase 5).
+
+## Verifikasi P4-2 (22 Okt 2026, sandbox)
+- Dijalankan: `npm run typecheck`, `npm run lint`, `npm run build` (lolos). Skrip uji skema ad-hoc via `tsx` (26 pemeriksaan: wajib isi, opsi tertutup, tahun di luar daftar, normalisasi spasi, batas panjang, karakter tak sah, input tak tepercaya, pesan tidak memuat nilai) lolos. `next start` + halaman uji sementara (sudah dihapus): HTML server memuat 5 kontrol, 5 label, 5 `aria-required`, opsi status/tahun/jurusan sesuai form.
+- Belum: interaksi browser (Chromium tidak bisa diunduh di sandbox), server action dengan sesi Google sungguhan, unit test runner, pembaca layar, penyimpanan database (Phase 5).

@@ -16,6 +16,16 @@ export const STUDENT_STEP_INDEX = REGISTRATION_STEPS.findIndex(
   (s) => s.id === "data-siswa",
 );
 
+/** Index of "Data Orang Tua / Wali"; leaving it forward requires a valid draft. */
+export const PARENTS_STEP_INDEX = REGISTRATION_STEPS.findIndex(
+  (s) => s.id === "data-orang-tua",
+);
+
+/** Index of "Data Sekolah Asal"; leaving it forward requires a valid draft. */
+export const SCHOOL_STEP_INDEX = REGISTRATION_STEPS.findIndex(
+  (s) => s.id === "data-sekolah-asal",
+);
+
 /**
  * Official terms supplied by the owner (ai/BUSINESS_RULES.md), verbatim.
  * Term 3 mentions receiving a password; the wording still needs school/owner

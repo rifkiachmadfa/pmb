@@ -13,10 +13,24 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { validateStudentStep } from "../actions";
+import { validateParentsStep, validateSchoolStep, validateStudentStep } from "../actions";
 import { initialWizardState, wizardReducer } from "../draft";
 import {
+  PARENTS_FIELDS,
+  validateParentsDraft,
+  type ParentsFieldErrors,
+  type ParentsFieldName,
+} from "../guardian-schema";
+import {
+  SCHOOL_FIELDS,
+  validateSchoolDraft,
+  type SchoolFieldErrors,
+  type SchoolFieldName,
+} from "../school-schema";
+import {
   LAST_STEP_INDEX,
+  PARENTS_STEP_INDEX,
+  SCHOOL_STEP_INDEX,
   REGISTRATION_STEPS,
   STUDENT_STEP_INDEX,
 } from "../steps";
@@ -26,7 +40,8 @@ import {
   type StudentFieldErrors,
   type StudentFieldName,
 } from "../student-schema";
-import { StepPlaceholder } from "./step-placeholder";
+import { StepParents } from "./step-parents";
+import { StepSchool } from "./step-school";
 import { StepReview } from "./step-review";
 import { StepStudent } from "./step-student";
 import { StepTerms } from "./step-terms";
@@ -41,6 +56,16 @@ function focusFirstStudentError(errors: StudentFieldErrors) {
   document.getElementById(id)?.focus();
 }
 
+function focusFirstParentsError(errors: ParentsFieldErrors) {
+  const key = PARENTS_FIELDS.find((k) => errors[k]);
+  if (key) document.getElementById(`parents-${key}`)?.focus();
+}
+
+function focusFirstSchoolError(errors: SchoolFieldErrors) {
+  const key = SCHOOL_FIELDS.find((k) => errors[k]);
+  if (key) document.getElementById(`school-${key}`)?.focus();
+}
+
 /**
  * Five-step wizard. All steps render inside this one component so the draft
  * (held in the reducer) survives back/next navigation. State is in memory only.
@@ -50,6 +75,10 @@ export function RegistrationWizard() {
   const [termsError, setTermsError] = useState(false);
   const [studentShowAll, setStudentShowAll] = useState(false);
   const [serverErrors, setServerErrors] = useState<StudentFieldErrors>({});
+  const [parentsShowAll, setParentsShowAll] = useState(false);
+  const [parentsServerErrors, setParentsServerErrors] = useState<ParentsFieldErrors>({});
+  const [schoolShowAll, setSchoolShowAll] = useState(false);
+  const [schoolServerErrors, setSchoolServerErrors] = useState<SchoolFieldErrors>({});
   const [notice, setNotice] = useState<Notice>(null);
   const [checking, startTransition] = useTransition();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -65,6 +94,24 @@ export function RegistrationWizard() {
   const studentErrors: StudentFieldErrors = {
     ...serverErrors,
     ...(studentResult.ok ? {} : studentResult.errors),
+  };
+
+  const parentsResult = useMemo(
+    () => validateParentsDraft(draft.guardian),
+    [draft.guardian],
+  );
+  const parentsErrors: ParentsFieldErrors = {
+    ...parentsServerErrors,
+    ...(parentsResult.ok ? {} : parentsResult.errors),
+  };
+
+  const schoolResult = useMemo(
+    () => validateSchoolDraft(draft.previousSchool),
+    [draft.previousSchool],
+  );
+  const schoolErrors: SchoolFieldErrors = {
+    ...schoolServerErrors,
+    ...(schoolResult.ok ? {} : schoolResult.errors),
   };
 
   // Move focus to the new step heading so keyboard/screen-reader users land on it.
@@ -112,6 +159,60 @@ export function RegistrationWizard() {
       return;
     }
 
+    if (step === PARENTS_STEP_INDEX) {
+      setNotice(null);
+      if (!parentsResult.ok) {
+        setParentsShowAll(true);
+        focusFirstParentsError(parentsResult.errors);
+        return;
+      }
+      startTransition(async () => {
+        try {
+          const result = await validateParentsStep(draft.guardian);
+          if (result.status === "ok") {
+            setParentsServerErrors({});
+            dispatch({ type: "next" });
+          } else if (result.status === "unauthenticated") {
+            setNotice("session");
+          } else {
+            setParentsServerErrors(result.errors);
+            setParentsShowAll(true);
+            focusFirstParentsError(result.errors);
+          }
+        } catch {
+          setNotice("network");
+        }
+      });
+      return;
+    }
+
+    if (step === SCHOOL_STEP_INDEX) {
+      setNotice(null);
+      if (!schoolResult.ok) {
+        setSchoolShowAll(true);
+        focusFirstSchoolError(schoolResult.errors);
+        return;
+      }
+      startTransition(async () => {
+        try {
+          const result = await validateSchoolStep(draft.previousSchool);
+          if (result.status === "ok") {
+            setSchoolServerErrors({});
+            dispatch({ type: "next" });
+          } else if (result.status === "unauthenticated") {
+            setNotice("session");
+          } else {
+            setSchoolServerErrors(result.errors);
+            setSchoolShowAll(true);
+            focusFirstSchoolError(result.errors);
+          }
+        } catch {
+          setNotice("network");
+        }
+      });
+      return;
+    }
+
     dispatch({ type: "next" });
   };
 
@@ -122,7 +223,29 @@ export function RegistrationWizard() {
       dispatch({ type: "goTo", step: STUDENT_STEP_INDEX });
       return;
     }
+    if (target > PARENTS_STEP_INDEX && !parentsResult.ok) {
+      setParentsShowAll(true);
+      dispatch({ type: "goTo", step: PARENTS_STEP_INDEX });
+      return;
+    }
+    if (target > SCHOOL_STEP_INDEX && !schoolResult.ok) {
+      setSchoolShowAll(true);
+      dispatch({ type: "goTo", step: SCHOOL_STEP_INDEX });
+      return;
+    }
     dispatch({ type: "goTo", step: target });
+  };
+
+  const handleSchoolChange = (name: SchoolFieldName, value: string) => {
+    if (Object.keys(schoolServerErrors).length > 0) setSchoolServerErrors({});
+    setNotice(null);
+    dispatch({ type: "setSchoolField", name, value });
+  };
+
+  const handleParentsChange = (name: ParentsFieldName, value: string) => {
+    if (Object.keys(parentsServerErrors).length > 0) setParentsServerErrors({});
+    setNotice(null);
+    dispatch({ type: "setParentsField", name, value });
   };
 
   const handleTermsChange = (accepted: boolean) => {
@@ -166,10 +289,20 @@ export function RegistrationWizard() {
           />
         )}
         {current.id === "data-orang-tua" && (
-          <StepPlaceholder title="Data Orang Tua / Wali" phase="Phase 4" />
+          <StepParents
+            values={draft.guardian}
+            errors={parentsErrors}
+            showAllErrors={parentsShowAll}
+            onChange={handleParentsChange}
+          />
         )}
         {current.id === "data-sekolah-asal" && (
-          <StepPlaceholder title="Data Sekolah Asal" phase="Phase 4" />
+          <StepSchool
+            values={draft.previousSchool}
+            errors={schoolErrors}
+            showAllErrors={schoolShowAll}
+            onChange={handleSchoolChange}
+          />
         )}
         {current.id === "konfirmasi" && (
           <StepReview

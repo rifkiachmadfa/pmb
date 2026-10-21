@@ -1,6 +1,8 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { RegistrationDraft } from "../draft";
+import { validateParentsDraft } from "../guardian-schema";
+import { validateSchoolDraft } from "../school-schema";
 import { validateStudentDraft } from "../student-schema";
 
 type Props = {
@@ -24,7 +26,13 @@ function summarize(key: (typeof SECTIONS)[number]["key"], draft: RegistrationDra
     if (validateStudentDraft(draft.student).ok) return "Lengkap";
     return filled > 0 ? `${filled} isian terisi, belum lengkap` : "Belum ada isian";
   }
-  return filled > 0 ? `${filled} isian terisi` : "Belum ada isian";
+  if (key === "guardian") {
+    if (validateParentsDraft(draft.guardian).ok) return "Lengkap";
+    const parentFilled = Object.values(draft.guardian).filter((v) => v.trim() !== "").length;
+    return parentFilled > 0 ? `${parentFilled} isian terisi, belum lengkap` : "Belum ada isian";
+  }
+  if (validateSchoolDraft(draft.previousSchool).ok) return "Lengkap";
+  return filled > 0 ? `${filled} isian terisi, belum lengkap` : "Belum ada isian";
 }
 
 export function StepReview({ draft, onEdit }: Props) {

@@ -1,5 +1,15 @@
 # Project Changelog
 
+## P4-2 — Data Sekolah Asal + Jurusan (2026-10-22) — IMPLEMENTED, PARTLY TESTED in sandbox (typecheck/lint/build + 26 schema checks + SSR HTML check; browser interaction UNTESTED)
+- Step 4 now has the owner's 5 fields (asal sekolah, status, alamat, tahun lulus, jurusan). New `school-schema.ts` (shared Zod), server action `validateSchoolStep`, UI `step-school.tsx`. Draft/reducer/wizard/review typed and gated (leaving step 4 needs a valid draft).
+- Removed unused `step-placeholder.tsx` and `DraftSection`. Decisions/assumptions: ADR-023 (PROPOSED). No Prisma change (Jurusan has no column; recorded for Phase 5). Phase 4 field work complete; all five wizard steps now have content.
+
+## P4-1 — Data Orang Tua / Wali (2026-10-22) — IMPLEMENTED, PARTLY TESTED in sandbox (typecheck/lint/build + 38 schema checks + SSR HTML check; browser interaction UNTESTED)
+- Step 3 now has the owner's 21 fields (Ayah, Ibu, Wali x NIK, nama, tahun lahir, pendidikan, pekerjaan, penghasilan, HP). New `guardian-schema.ts` (shared Zod), server action `validateParentsStep`, UI `step-parents.tsx` (button "Tidak ada wali" fills all Wali fields with "-").
+- Draft/reducer/wizard/review: typed parents draft, gate on leaving step 3 (Lanjut, stepper, goTo), review shows completeness. `student-schema.ts` only exports 4 existing helpers (no behavior change).
+- Step 4 (Data Sekolah Asal) stays a placeholder: its field list has not been provided.
+- Decisions/assumptions: ADR-022 (PROPOSED). No Prisma schema/migration change (birthYear vs birthDate mismatch recorded for Phase 5).
+
 ## P3-1 — Data Siswa fields and validation (2026-10-22) — IMPLEMENTED, TESTED in sandbox (typecheck/lint/build + schema checks + Playwright)
 - Step 2 now has the full owner-supplied field list in six sections (identity, address, KPS/KIP, family/physical, residence/transport, contact). New `ui/field`, `ui/select`, `ui/radio` primitives.
 - `student-schema.ts`: shared Zod validation + normalization (strings for NISN/NIK/KK/akta/phones/postal code, `-` convention, real-date check). `actions.ts`: server action `validateStudentStep` (session check + Zod, no storage, no logging).

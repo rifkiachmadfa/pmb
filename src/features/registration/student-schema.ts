@@ -140,14 +140,14 @@ export const STUDENT_ERROR_ORDER: readonly StudentErrorKey[] = STUDENT_FIELDS.fl
 const REQUIRED = "Wajib diisi.";
 const PICK = "Pilih salah satu pilihan.";
 
-const NAME_RE = /^[\p{L}\p{M}][\p{L}\p{M} .,'’-]*$/u;
+export const NAME_RE = /^[\p{L}\p{M}][\p{L}\p{M} .,'’-]*$/u;
 const CODE_RE = /^[A-Za-z0-9][A-Za-z0-9 ./-]*$/;
-const MOBILE_RE = /^(?:\+62|62|0)8\d{8,12}$/;
+export const MOBILE_RE = /^(?:\+62|62|0)8\d{8,12}$/;
 const LANDLINE_RE = /^\+?\d{6,15}$/;
 const DISTANCE_RE = /^\d{1,4}(?:[.,]\d{1,2})?$/;
 
-const collapse = (v: string) => v.replace(/\s+/g, " ");
-const stripPhone = (v: string) => v.replace(/[\s().-]/g, "");
+export const collapse = (v: string) => v.replace(/\s+/g, " ");
+export const stripPhone = (v: string) => v.replace(/[\s().-]/g, "");
 
 const required = () =>
   z.string({ error: REQUIRED }).trim().min(1, { error: REQUIRED });
