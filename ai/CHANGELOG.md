@@ -1,5 +1,13 @@
 # Project Changelog
 
+## P2-2 — Five-step wizard skeleton (2026-10-22) — IMPLEMENTED, TESTED (typecheck/lint/build + local Playwright check)
+- Added `/pendaftaran` with a client-side wizard: Ketentuan, Data Siswa, Data Orang Tua / Wali, Data Sekolah Asal, Konfirmasi.
+- Stepper (compact bar on mobile, ordered list from `md`; only reached steps are clickable), Kembali/Lanjut navigation, focus moves to the step heading on change.
+- Terms gate: five official terms (verbatim from BUSINESS_RULES.md) and an explicit checkbox; Lanjut shows an error and does not advance until accepted; withdrawing consent returns to step 1.
+- Local draft state (`useReducer`, in memory only) survives step navigation. Steps 2-4 are honest placeholders (no invented fields; Phase 3/4). Step 5 is a review/edit summary with a notice that submission is not available yet.
+- No new dependencies. No auth, database, payment, or notification code.
+- Docs: ARCHITECTURE.md, CURRENT_STATE.md, ROADMAP.md, handoff/P2-2.md.
+
 ## P2-1 — Design tokens and app shell (2026-10-21) — IMPLEMENTED, TESTED (build/lint/typecheck + local browser check)
 - Replaced neutral shadcn tokens in `src/app/globals.css` with the approved palette (light blue `#A9D5F5`, warm white `#FFFDF7`, soft yellow `#F3C969`, navy `#25364A`) mapped to semantic tokens. Light mode only (the unapproved `.dark` palette was removed).
 - Added UI components (no new dependencies): `button`, `input`, `label`, `checkbox`, `alert` in `src/components/ui/`.

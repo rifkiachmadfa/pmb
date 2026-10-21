@@ -36,3 +36,9 @@ The primary public experience is a direct PMB application flow, not a content-he
 - `src/components/ui/`: `button`, `input`, `label`, `checkbox`, `alert` (hand-written in shadcn new-york style, no Radix).
 - `src/components/layout/`: `SkipLink`, `SiteHeader` (has a `children` slot for future nav/account actions), `SiteFooter`, `PageContainer` (`narrow` | `default` | `wide`).
 - `src/app/layout.tsx`: skip link, header, `<main id="main">`, footer. Pages render inside `main` and must not add another.
+
+## Registration wizard (implemented in P2-2)
+- Route `src/app/pendaftaran/page.tsx` (server component, static) renders the client component `RegistrationWizard`. The route is NOT protected yet (auth is blocked on ADR-012).
+- `src/features/registration/steps.ts`: step ids/labels and the five official terms. `draft.ts`: pure reducer (`wizardReducer`) with `termsAccepted`, `student`, `guardian`, `previousSchool` sections (empty until Phase 3/4). `components/`: `registration-wizard`, `wizard-stepper`, `step-terms`, `step-placeholder`, `step-review`.
+- All steps render inside one component, so the draft survives navigation. State is in memory only: reload loses it. No localStorage by design (personal data; persistence policy not approved). Real persistence arrives in Phase 5 with authentication.
+

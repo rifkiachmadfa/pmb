@@ -1,0 +1,633 @@
+diff --git a/ai/ARCHITECTURE.md b/ai/ARCHITECTURE.md
+index 03b80ec..c1f19ba 100644
+--- a/ai/ARCHITECTURE.md
++++ b/ai/ARCHITECTURE.md
+@@ -36,3 +36,9 @@ The primary public experience is a direct PMB application flow, not a content-he
+ - `src/components/ui/`: `button`, `input`, `label`, `checkbox`, `alert` (hand-written in shadcn new-york style, no Radix).
+ - `src/components/layout/`: `SkipLink`, `SiteHeader` (has a `children` slot for future nav/account actions), `SiteFooter`, `PageContainer` (`narrow` | `default` | `wide`).
+ - `src/app/layout.tsx`: skip link, header, `<main id="main">`, footer. Pages render inside `main` and must not add another.
++
++## Registration wizard (implemented in P2-2)
++- Route `src/app/pendaftaran/page.tsx` (server component, static) renders the client component `RegistrationWizard`. The route is NOT protected yet (auth is blocked on ADR-012).
++- `src/features/registration/steps.ts`: step ids/labels and the five official terms. `draft.ts`: pure reducer (`wizardReducer`) with `termsAccepted`, `student`, `guardian`, `previousSchool` sections (empty until Phase 3/4). `components/`: `registration-wizard`, `wizard-stepper`, `step-terms`, `step-placeholder`, `step-review`.
++- All steps render inside one component, so the draft survives navigation. State is in memory only: reload loses it. No localStorage by design (personal data; persistence policy not approved). Real persistence arrives in Phase 5 with authentication.
++
+diff --git a/ai/CHANGELOG.md b/ai/CHANGELOG.md
+index ff9302c..29a679a 100644
+--- a/ai/CHANGELOG.md
++++ b/ai/CHANGELOG.md
+@@ -1,5 +1,13 @@
+ # Project Changelog
+ 
++## P2-2 — Five-step wizard skeleton (2026-10-22) — IMPLEMENTED, TESTED (typecheck/lint/build + local Playwright check)
++- Added `/pendaftaran` with a client-side wizard: Ketentuan, Data Siswa, Data Orang Tua / Wali, Data Sekolah Asal, Konfirmasi.
++- Stepper (compact bar on mobile, ordered list from `md`; only reached steps are clickable), Kembali/Lanjut navigation, focus moves to the step heading on change.
++- Terms gate: five official terms (verbatim from BUSINESS_RULES.md) and an explicit checkbox; Lanjut shows an error and does not advance until accepted; withdrawing consent returns to step 1.
++- Local draft state (`useReducer`, in memory only) survives step navigation. Steps 2-4 are honest placeholders (no invented fields; Phase 3/4). Step 5 is a review/edit summary with a notice that submission is not available yet.
++- No new dependencies. No auth, database, payment, or notification code.
++- Docs: ARCHITECTURE.md, CURRENT_STATE.md, ROADMAP.md, handoff/P2-2.md.
++
+ ## P2-1 — Design tokens and app shell (2026-10-21) — IMPLEMENTED, TESTED (build/lint/typecheck + local browser check)
+ - Replaced neutral shadcn tokens in `src/app/globals.css` with the approved palette (light blue `#A9D5F5`, warm white `#FFFDF7`, soft yellow `#F3C969`, navy `#25364A`) mapped to semantic tokens. Light mode only (the unapproved `.dark` palette was removed).
+ - Added UI components (no new dependencies): `button`, `input`, `label`, `checkbox`, `alert` in `src/components/ui/`.
+diff --git a/ai/CURRENT_STATE.md b/ai/CURRENT_STATE.md
+index c53f141..5dfdae7 100644
+--- a/ai/CURRENT_STATE.md
++++ b/ai/CURRENT_STATE.md
+@@ -8,14 +8,21 @@ PMB SMK Yadika Tanjungsari Sumedang, tahun ajaran 2026/2027. Branch utama `main`
+ ## Kondisi berdasarkan repository dan audit terakhir
+ - Fondasi aplikasi, konfigurasi server/env, Prisma schema, halaman placeholder, endpoint health, design tokens, komponen UI dasar, dan shared layout sudah tersedia.
+ - P2-1 (design tokens, komponen UI, shared shell) telah ada di branch `main`; riwayat yang diperiksa Claude menunjukkan commit `8dae5bf` sebagai commit UI terbaru.
+-- Belum tersedia: autentikasi, proteksi route, wizard pendaftaran, form data siswa, persistence pendaftaran, dashboard, integrasi Midtrans/Fonnte, dan workflow admin.
++- P2-2 (wizard lima langkah di `/pendaftaran`: stepper, Kembali/Lanjut, gerbang ketentuan, draft lokal di memori) IMPLEMENTED/TESTED; belum di-commit oleh owner. Langkah 2-4 masih placeholder tanpa field.
++- Belum tersedia: autentikasi, proteksi route, field form data siswa/orang tua/sekolah asal, persistence pendaftaran, dashboard, integrasi Midtrans/Fonnte, dan workflow admin.
+ - `prisma/schema.prisma` memiliki model domain, tetapi status migrasi/koneksi database perlu diverifikasi sebelum mengandalkannya. Jangan jalankan migrasi ke database bersama tanpa persetujuan.
+ - Auth provider masih keputusan PROPOSED (ADR-012). Jangan membangun integrasi auth spesifik sebelum keputusan itu diperlukan/disetujui. Wizard visual/state lokal dapat dikerjakan tanpa auth.
+ - `phase1.patch` dan `p2-1.patch` ada di repository. Jangan hapus atau menerapkan ulang otomatis; periksa apakah diperlukan sebelum tindakan apa pun.
+ - Folder dokumentasi adalah `ai/`, bukan `.ai/`.
+ 
+ ## Langkah kerja berikutnya
+-Lanjutkan Phase 2 dengan wizard lima langkah: Ketentuan, Data Siswa, Data Orang Tua/Wali, Data Sekolah Asal, Konfirmasi. Mulai dari stepper, navigasi Kembali/Lanjut, persetujuan ketentuan, dan draft state lokal. Jangan menambahkan autentikasi, penyimpanan database, pembayaran, atau notifikasi dalam tugas wizard awal.
++Phase 2 tersisa: layar masuk/daftar/pemulihan akun dan proteksi route `/pendaftaran` + dashboard (butuh persetujuan ADR-012). Alternatif tanpa auth: Phase 3 (field Data Siswa) bila owner meminta. Jangan menambahkan penyimpanan database, pembayaran, atau notifikasi sebelum fasenya.
++
++## Verifikasi P2-2 (22 Okt 2026, sandbox)
++- Dijalankan: `npm ci` (perlu `PRISMA_SCHEMA_ENGINE_BINARY=/bin/true` karena `binaries.prisma.sh` tidak terjangkau), `npm run typecheck`, `npm run lint`, `npm run build` — semuanya lolos.
++- Playwright/Chromium terhadap `next start` (desktop 1280px dan mobile 375px): Lanjut diblokir tanpa persetujuan + pesan error; centang menghapus error; fokus pindah ke judul langkah; Konfirmasi tanpa tombol Lanjut; Ubah kembali ke Ketentuan dengan centang tetap; batal centang mengembalikan ke langkah 1; tidak ada overflow horizontal.
++- Belum dijalankan: unit test (belum ada runner), pembaca layar, browser lain, perangkat nyata. Draft hilang saat reload (by design).
++- Catatan: teks ketentuan 3 menyebut "mendapatkan password"; redaksi perlu disetujui sekolah (ADR-013).
+ 
+ ## Cara menjaga status
+ Ini ringkasan operasional, bukan bukti semua tes masih lolos. Periksa kode/tes yang relevan saat mengubahnya. Setelah tugas, perbarui bagian ini hanya bila status atau langkah berikutnya berubah. Catat hasil tes sesuai perintah yang benar-benar dijalankan.
+diff --git a/ai/ROADMAP.md b/ai/ROADMAP.md
+index a869ca8..0efcc00 100644
+--- a/ai/ROADMAP.md
++++ b/ai/ROADMAP.md
+@@ -6,7 +6,7 @@ Statuses: `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `COMPLETED`, `VERIFICATION_RE
+ |---|---|---|
+ | 0 | Repository audit, requirements baseline, `.ai/` docs, stack/auth decisions, environment safety | IN_PROGRESS (partial: audit + versions done; auth approval, `ai/` vs `.ai/`, business decisions open) |
+ | 1 | Next.js foundation, TypeScript, UI setup, Supabase/Postgres and Prisma baseline | VERIFICATION_REQUIRED (code done; DB connection + shadcn CLI unverified) |
+-| 2 | Responsive shell, auth screens, five-step registration wizard skeleton | IN_PROGRESS (P2-1 tokens + shell + base components done; auth screens, protected routes, wizard skeleton NOT_STARTED) |
++| 2 | Responsive shell, auth screens, five-step registration wizard skeleton | IN_PROGRESS (P2-1 tokens + shell + base components done; P2-2 wizard skeleton done; auth screens and protected routes NOT_STARTED, blocked on ADR-012) |
+ | 3 | Student data fields and validation | NOT_STARTED |
+ | 4 | Parent/guardian and previous-school forms after review | NOT_STARTED |
+ | 5 | Confirmation, registration persistence, ownership and dashboard foundation | NOT_STARTED |
+@@ -20,7 +20,7 @@ Statuses: `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `COMPLETED`, `VERIFICATION_RE
+ A phase is COMPLETED only when its acceptance criteria are satisfied, relevant checks are executed, actual evidence is recorded, and documentation is updated. If code exists but required verification is unavailable, use VERIFICATION_REQUIRED. Do not advance past unresolved dependencies without owner approval.
+ 
+ ## Current focus
+-P2-1 (design tokens, base components, shared layout) IMPLEMENTED/TESTED, awaiting owner visual review and commit. Next within Phase 2: wizard skeleton (no auth dependency) and/or auth screens (needs ADR-012).
++P2-1 (design tokens, base components, shared layout) IMPLEMENTED/TESTED, awaiting owner visual review and commit. P2-2 (five-step wizard skeleton at `/pendaftaran`, local draft, terms gate) IMPLEMENTED/TESTED, awaiting owner review and commit. Next within Phase 2: auth screens + protected routes (needs ADR-012).
+ 
+ DB-SCHEMA-001 (owner-requested Prisma schema v1) done as PROPOSED/unmigrated; awaiting owner review. Phase 3-5 field/persistence work still follows phase order.
+ 
+diff --git a/ai/handoff/P2-2.md b/ai/handoff/P2-2.md
+new file mode 100644
+index 0000000..7df004c
+--- /dev/null
++++ b/ai/handoff/P2-2.md
+@@ -0,0 +1,33 @@
++# Handoff — P2-2 Five-step wizard skeleton
++
++## Task
++- Phase: 2 | Task ID: P2-2 | Date: 2026-10-22
++- Branch / commit (verified): `main` @ `251cb67` (fresh clone). Changes are UNCOMMITTED; owner commits/pushes.
++
++## Summary
++- What changed: `/pendaftaran` wizard with stepper, Kembali/Lanjut, terms gate (5 official terms + explicit checkbox), in-memory draft that survives step navigation, review/edit step. Steps 2-4 are placeholders with no fields.
++- Acceptance satisfied: cannot pass terms without agreement; values survive navigation; tokens/components reused, no new dependencies. NOT claimed: Phase 2 complete (auth screens, route protection remain).
++
++## Files
++### Created
++- `src/app/pendaftaran/page.tsx`
++- `src/features/registration/steps.ts`, `draft.ts`
++- `src/features/registration/components/registration-wizard.tsx`, `wizard-stepper.tsx`, `step-terms.tsx`, `step-placeholder.tsx`, `step-review.tsx`
++- `ai/handoff/P2-2.md`
++### Modified
++- `ai/ARCHITECTURE.md`, `ai/CHANGELOG.md`, `ai/CURRENT_STATE.md`, `ai/ROADMAP.md`
++### Deleted
++- None
++
++## Verification
++- Commands run: `npm ci` (with `PRISMA_SCHEMA_ENGINE_BINARY=/bin/true`), `npm run typecheck`, `npm run lint`, `npm run build`, `next start` + Playwright checks (desktop and mobile). All passed.
++- Not run: unit tests (no runner), screen reader, other browsers/devices. No DB/provider checks (out of scope).
++
++## Risks / decisions for owner
++- `/pendaftaran` is public and stores nothing; it must be protected once auth (ADR-012) is approved.
++- Term 3 wording about receiving a password needs school approval (ADR-013); text is kept verbatim.
++- Draft is memory-only (no localStorage) because it will hold personal data and no persistence policy is approved.
++- Header/home page do not link to `/pendaftaran` yet (registration is not open; add the link with auth).
++
++## Next task
++- Auth screens and protected routes after ADR-012 approval; or Phase 3 student fields if the owner prefers.
+diff --git a/src/app/pendaftaran/page.tsx b/src/app/pendaftaran/page.tsx
+new file mode 100644
+index 0000000..982ba36
+--- /dev/null
++++ b/src/app/pendaftaran/page.tsx
+@@ -0,0 +1,28 @@
++import type { Metadata } from "next";
++
++import { PageContainer } from "@/components/layout/page-container";
++import { RegistrationWizard } from "@/features/registration/components/registration-wizard";
++
++export const metadata: Metadata = {
++  title: "Pendaftaran | PMB SMK Yadika Tanjungsari Sumedang",
++};
++
++/**
++ * Wizard skeleton. NOT yet protected: authentication and route protection are
++ * a later Phase 2 task (blocked on ADR-012). No data is persisted or sent.
++ */
++export default function PendaftaranPage() {
++  return (
++    <PageContainer className="flex flex-col gap-8">
++      <header className="flex flex-col gap-1">
++        <h1 className="text-2xl font-semibold tracking-tight">
++          Formulir Pendaftaran
++        </h1>
++        <p className="text-muted-foreground">
++          Lengkapi lima langkah berikut untuk mendaftar PMB 2026/2027.
++        </p>
++      </header>
++      <RegistrationWizard />
++    </PageContainer>
++  );
++}
+diff --git a/src/features/registration/components/registration-wizard.tsx b/src/features/registration/components/registration-wizard.tsx
+new file mode 100644
+index 0000000..98b54d7
+--- /dev/null
++++ b/src/features/registration/components/registration-wizard.tsx
+@@ -0,0 +1,110 @@
++"use client";
++
++import { useEffect, useReducer, useRef, useState } from "react";
++import { ArrowLeft, ArrowRight } from "lucide-react";
++
++import { Button } from "@/components/ui/button";
++import { initialWizardState, wizardReducer } from "../draft";
++import { LAST_STEP_INDEX, REGISTRATION_STEPS } from "../steps";
++import { StepPlaceholder } from "./step-placeholder";
++import { StepReview } from "./step-review";
++import { StepTerms } from "./step-terms";
++import { WizardStepper } from "./wizard-stepper";
++
++/**
++ * Five-step wizard. All steps render inside this one component so the draft
++ * (held in the reducer) survives back/next navigation. State is in memory only.
++ */
++export function RegistrationWizard() {
++  const [state, dispatch] = useReducer(wizardReducer, initialWizardState);
++  const [termsError, setTermsError] = useState(false);
++  const headingRef = useRef<HTMLHeadingElement>(null);
++  const firstRender = useRef(true);
++
++  const { step, maxStep, draft } = state;
++
++  // Move focus to the new step heading so keyboard/screen-reader users land on it.
++  useEffect(() => {
++    if (firstRender.current) {
++      firstRender.current = false;
++      return;
++    }
++    headingRef.current?.focus();
++  }, [step]);
++
++  const handleNext = () => {
++    if (!draft.termsAccepted) {
++      setTermsError(true);
++      return;
++    }
++    dispatch({ type: "next" });
++  };
++
++  const handleTermsChange = (accepted: boolean) => {
++    if (accepted) setTermsError(false);
++    dispatch({ type: "setTermsAccepted", accepted });
++  };
++
++  const current = REGISTRATION_STEPS[step];
++
++  return (
++    <div className="flex flex-col gap-8">
++      <WizardStepper
++        current={step}
++        maxStep={maxStep}
++        onSelect={(s) => dispatch({ type: "goTo", step: s })}
++      />
++
++      <section aria-labelledby="step-heading" className="flex flex-col gap-5">
++        <h2
++          id="step-heading"
++          ref={headingRef}
++          tabIndex={-1}
++          className="text-xl font-semibold tracking-tight focus:outline-none"
++        >
++          {current.label}
++        </h2>
++
++        {current.id === "ketentuan" && (
++          <StepTerms
++            accepted={draft.termsAccepted}
++            showError={termsError && !draft.termsAccepted}
++            onChange={handleTermsChange}
++          />
++        )}
++        {current.id === "data-siswa" && (
++          <StepPlaceholder title="Data Siswa" phase="Phase 3" />
++        )}
++        {current.id === "data-orang-tua" && (
++          <StepPlaceholder title="Data Orang Tua / Wali" phase="Phase 4" />
++        )}
++        {current.id === "data-sekolah-asal" && (
++          <StepPlaceholder title="Data Sekolah Asal" phase="Phase 4" />
++        )}
++        {current.id === "konfirmasi" && (
++          <StepReview
++            draft={draft}
++            onEdit={(s) => dispatch({ type: "goTo", step: s })}
++          />
++        )}
++      </section>
++
++      <div className="flex items-center justify-between gap-3 border-t border-border pt-5">
++        <Button
++          variant="outline"
++          onClick={() => dispatch({ type: "back" })}
++          disabled={step === 0}
++        >
++          <ArrowLeft aria-hidden="true" />
++          Kembali
++        </Button>
++        {step < LAST_STEP_INDEX ? (
++          <Button onClick={handleNext}>
++            Lanjut
++            <ArrowRight aria-hidden="true" />
++          </Button>
++        ) : null}
++      </div>
++    </div>
++  );
++}
+diff --git a/src/features/registration/components/step-placeholder.tsx b/src/features/registration/components/step-placeholder.tsx
+new file mode 100644
+index 0000000..6c4507b
+--- /dev/null
++++ b/src/features/registration/components/step-placeholder.tsx
+@@ -0,0 +1,24 @@
++import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
++
++/**
++ * Empty state for steps whose official field list is not implemented yet.
++ * Deliberately renders no inputs: fields are added in later phases.
++ */
++export function StepPlaceholder({
++  title,
++  phase,
++}: {
++  title: string;
++  phase: string;
++}) {
++  return (
++    <Alert>
++      <AlertTitle>Formulir {title} belum tersedia</AlertTitle>
++      <AlertDescription>
++        Isian pada langkah ini akan ditambahkan pada tahap pengembangan
++        berikutnya ({phase}). Anda dapat melanjutkan untuk melihat alur
++        pendaftaran.
++      </AlertDescription>
++    </Alert>
++  );
++}
+diff --git a/src/features/registration/components/step-review.tsx b/src/features/registration/components/step-review.tsx
+new file mode 100644
+index 0000000..25adb11
+--- /dev/null
++++ b/src/features/registration/components/step-review.tsx
+@@ -0,0 +1,65 @@
++import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
++import { Button } from "@/components/ui/button";
++import type { RegistrationDraft } from "../draft";
++
++type Props = {
++  draft: RegistrationDraft;
++  onEdit: (step: number) => void;
++};
++
++const SECTIONS = [
++  { step: 1, label: "Data Siswa", key: "student" },
++  { step: 2, label: "Data Orang Tua / Wali", key: "guardian" },
++  { step: 3, label: "Data Sekolah Asal", key: "previousSchool" },
++] as const;
++
++export function StepReview({ draft, onEdit }: Props) {
++  return (
++    <div className="flex flex-col gap-5">
++      <p className="text-muted-foreground">
++        Periksa ringkasan pendaftaran. Gunakan tombol Ubah untuk kembali ke
++        langkah yang ingin diperbaiki.
++      </p>
++
++      <dl className="divide-y divide-border border-y border-border">
++        <div className="flex items-center justify-between gap-4 py-3">
++          <div>
++            <dt className="text-sm font-medium">Ketentuan</dt>
++            <dd className="text-sm text-muted-foreground">
++              {draft.termsAccepted ? "Disetujui" : "Belum disetujui"}
++            </dd>
++          </div>
++          <Button variant="outline" size="sm" onClick={() => onEdit(0)}>
++            Ubah<span className="sr-only"> Ketentuan</span>
++          </Button>
++        </div>
++
++        {SECTIONS.map(({ step, label, key }) => {
++          const filled = Object.keys(draft[key]).length;
++          return (
++            <div key={key} className="flex items-center justify-between gap-4 py-3">
++              <div>
++                <dt className="text-sm font-medium">{label}</dt>
++                <dd className="text-sm text-muted-foreground">
++                  {filled > 0 ? `${filled} isian terisi` : "Belum ada isian"}
++                </dd>
++              </div>
++              <Button variant="outline" size="sm" onClick={() => onEdit(step)}>
++                Ubah<span className="sr-only"> {label}</span>
++              </Button>
++            </div>
++          );
++        })}
++      </dl>
++
++      <Alert variant="warning">
++        <AlertTitle>Pengiriman pendaftaran belum tersedia</AlertTitle>
++        <AlertDescription>
++          Draft ini hanya tersimpan sementara di halaman ini dan akan hilang
++          jika halaman dimuat ulang. Penyimpanan pendaftaran dan akun
++          ditambahkan pada tahap berikutnya.
++        </AlertDescription>
++      </Alert>
++    </div>
++  );
++}
+diff --git a/src/features/registration/components/step-terms.tsx b/src/features/registration/components/step-terms.tsx
+new file mode 100644
+index 0000000..ae2ba0d
+--- /dev/null
++++ b/src/features/registration/components/step-terms.tsx
+@@ -0,0 +1,52 @@
++import { Alert, AlertDescription } from "@/components/ui/alert";
++import { Checkbox } from "@/components/ui/checkbox";
++import { Label } from "@/components/ui/label";
++import { OFFICIAL_TERMS } from "../steps";
++
++type Props = {
++  accepted: boolean;
++  showError: boolean;
++  onChange: (accepted: boolean) => void;
++};
++
++export function StepTerms({ accepted, showError, onChange }: Props) {
++  return (
++    <div className="flex flex-col gap-5">
++      <p className="text-muted-foreground">
++        Baca ketentuan berikut dengan saksama. Anda harus menyetujui seluruh
++        ketentuan sebelum melanjutkan pendaftaran.
++      </p>
++
++      <ol className="list-decimal space-y-3 pl-5 leading-relaxed marker:font-semibold">
++        {OFFICIAL_TERMS.map((term) => (
++          <li key={term} className="pl-1">
++            {term}
++          </li>
++        ))}
++      </ol>
++
++      <div className="flex flex-col gap-2 border-t border-border pt-5">
++        <div className="flex items-start gap-3">
++          <Checkbox
++            id="terms-accepted"
++            checked={accepted}
++            onChange={(e) => onChange(e.target.checked)}
++            aria-invalid={showError || undefined}
++            aria-describedby={showError ? "terms-error" : undefined}
++            className="mt-0.5"
++          />
++          <Label htmlFor="terms-accepted" className="cursor-pointer">
++            Saya telah membaca dan menyetujui kelima ketentuan di atas.
++          </Label>
++        </div>
++        {showError ? (
++          <Alert variant="destructive" id="terms-error">
++            <AlertDescription>
++              Centang persetujuan untuk melanjutkan ke langkah berikutnya.
++            </AlertDescription>
++          </Alert>
++        ) : null}
++      </div>
++    </div>
++  );
++}
+diff --git a/src/features/registration/components/wizard-stepper.tsx b/src/features/registration/components/wizard-stepper.tsx
+new file mode 100644
+index 0000000..1ca975b
+--- /dev/null
++++ b/src/features/registration/components/wizard-stepper.tsx
+@@ -0,0 +1,95 @@
++import { Check } from "lucide-react";
++
++import { cn } from "@/lib/utils";
++import { REGISTRATION_STEPS } from "../steps";
++
++type Props = {
++  current: number;
++  maxStep: number;
++  onSelect: (step: number) => void;
++};
++
++/**
++ * Progress indicator. Small screens show a compact "Langkah X dari 5" bar;
++ * from `md` up the full ordered list is shown. Only already-reached steps are
++ * interactive; the current step carries aria-current="step".
++ */
++export function WizardStepper({ current, maxStep, onSelect }: Props) {
++  const total = REGISTRATION_STEPS.length;
++  return (
++    <nav aria-label="Langkah pendaftaran">
++      <div className="md:hidden">
++        <p className="text-sm font-medium">
++          Langkah {current + 1} dari {total}:{" "}
++          <span className="font-semibold">{REGISTRATION_STEPS[current].label}</span>
++        </p>
++        <div
++          aria-hidden="true"
++          className="mt-2 h-1.5 w-full overflow-hidden rounded-sm bg-muted"
++        >
++          <div
++            className="h-full bg-primary transition-[width]"
++            style={{ width: `${((current + 1) / total) * 100}%` }}
++          />
++        </div>
++      </div>
++
++      <ol className="hidden md:grid md:grid-cols-5 md:gap-2">
++        {REGISTRATION_STEPS.map((step, index) => {
++          const isCurrent = index === current;
++          const isDone = index < current;
++          const reachable = index <= maxStep && !isCurrent;
++          const inner = (
++            <>
++              <span
++                aria-hidden="true"
++                className={cn(
++                  "flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold",
++                  isCurrent && "border-foreground bg-primary text-primary-foreground",
++                  isDone && "border-foreground bg-foreground text-background",
++                  !isCurrent && !isDone && "border-input bg-surface text-muted-foreground",
++                )}
++              >
++                {isDone ? <Check className="size-3.5" strokeWidth={3} /> : index + 1}
++              </span>
++              <span
++                className={cn(
++                  "text-left text-sm leading-snug",
++                  isCurrent ? "font-semibold" : "text-muted-foreground",
++                )}
++              >
++                {step.label}
++              </span>
++            </>
++          );
++          const base =
++            "flex w-full items-center gap-2 border-t-2 pt-3 pb-1 " +
++            (isCurrent ? "border-highlight" : "border-border");
++          return (
++            <li key={step.id}>
++              {reachable ? (
++                <button
++                  type="button"
++                  onClick={() => onSelect(index)}
++                  className={cn(
++                    base,
++                    "rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
++                  )}
++                >
++                  {inner}
++                  <span className="sr-only">
++                    {isDone ? " (selesai)" : " (sudah dibuka)"}
++                  </span>
++                </button>
++              ) : (
++                <div className={base} aria-current={isCurrent ? "step" : undefined}>
++                  {inner}
++                </div>
++              )}
++            </li>
++          );
++        })}
++      </ol>
++    </nav>
++  );
++}
+diff --git a/src/features/registration/draft.ts b/src/features/registration/draft.ts
+new file mode 100644
+index 0000000..017bc57
+--- /dev/null
++++ b/src/features/registration/draft.ts
+@@ -0,0 +1,65 @@
++import { LAST_STEP_INDEX } from "./steps";
++
++/**
++ * Local, in-memory wizard draft (P2 wizard skeleton).
++ *
++ * Field lists for steps 2-4 are NOT defined yet: student fields arrive in
++ * Phase 3, parent/guardian and previous school in Phase 4 (after owner
++ * approval). The sections exist so those phases only add typed fields.
++ * Nothing is persisted: no localStorage (personal data), no server.
++ */
++export type DraftSection = Record<string, string>;
++
++export type RegistrationDraft = {
++  termsAccepted: boolean;
++  student: DraftSection;
++  guardian: DraftSection;
++  previousSchool: DraftSection;
++};
++
++export type WizardState = {
++  step: number;
++  /** Furthest step the user has legitimately reached; limits stepper jumps. */
++  maxStep: number;
++  draft: RegistrationDraft;
++};
++
++export type WizardAction =
++  | { type: "setTermsAccepted"; accepted: boolean }
++  | { type: "next" }
++  | { type: "back" }
++  | { type: "goTo"; step: number };
++
++export const initialWizardState: WizardState = {
++  step: 0,
++  maxStep: 0,
++  draft: { termsAccepted: false, student: {}, guardian: {}, previousSchool: {} },
++};
++
++const clamp = (n: number) => Math.min(Math.max(n, 0), LAST_STEP_INDEX);
++
++export function wizardReducer(state: WizardState, action: WizardAction): WizardState {
++  switch (action.type) {
++    case "setTermsAccepted": {
++      const draft = { ...state.draft, termsAccepted: action.accepted };
++      // Withdrawing consent returns to step 1 and revokes forward progress.
++      return action.accepted
++        ? { ...state, draft }
++        : { step: 0, maxStep: 0, draft };
++    }
++    case "next": {
++      // Server-independent gate: terms must be accepted to leave step 1.
++      if (!state.draft.termsAccepted) return state;
++      const step = clamp(state.step + 1);
++      return { ...state, step, maxStep: Math.max(state.maxStep, step) };
++    }
++    case "back":
++      return { ...state, step: clamp(state.step - 1) };
++    case "goTo": {
++      if (!state.draft.termsAccepted && action.step > 0) return state;
++      const step = clamp(action.step);
++      // Only already-reached steps can be jumped to.
++      return step <= state.maxStep ? { ...state, step } : state;
++    }
++  }
++}
+diff --git a/src/features/registration/steps.ts b/src/features/registration/steps.ts
+new file mode 100644
+index 0000000..4891aac
+--- /dev/null
++++ b/src/features/registration/steps.ts
+@@ -0,0 +1,25 @@
++/** The five registration steps, in order. Ids are stable; labels are UI text. */
++export const REGISTRATION_STEPS = [
++  { id: "ketentuan", label: "Ketentuan" },
++  { id: "data-siswa", label: "Data Siswa" },
++  { id: "data-orang-tua", label: "Data Orang Tua / Wali" },
++  { id: "data-sekolah-asal", label: "Data Sekolah Asal" },
++  { id: "konfirmasi", label: "Konfirmasi" },
++] as const;
++
++export type RegistrationStepId = (typeof REGISTRATION_STEPS)[number]["id"];
++
++export const LAST_STEP_INDEX = REGISTRATION_STEPS.length - 1;
++
++/**
++ * Official terms supplied by the owner (ai/BUSINESS_RULES.md), verbatim.
++ * Term 3 mentions receiving a password; the wording still needs school/owner
++ * approval to match secure account creation (ADR-013). Do not edit without it.
++ */
++export const OFFICIAL_TERMS = [
++  "Setiap calon siswa wajib mengisi form pendaftaran dengan lengkap.",
++  "Data-data yang diisikan pada form PPDB Online harus sesuai dengan data asli dan benar adanya.",
++  "Calon siswa yang sudah mendaftarkan secara online akan mendapatkan password serta dilampirkan dalam persyaratan yang diminta oleh Panitia PPDB MSMK YADIKA TANJUNGSARI SUMEDANG.",
++  "Calon siswa yang sudah mendaftarkan diri melalui PPDB Online SMK YADIKA TANJUNGSARI SUMEDANG wajib menyerahkan dokumen persyaratan yang sudah ditentukan oleh Panitia PPDB SMK YADIKA TANJUNGSARI SUMEDANG.",
++  "Data yang sudah diberikan kepada Panitia PPDB SMK YADIKA TANJUNGSARI SUMEDANG hanya digunakan untuk keperluan penerimaan siswa baru, tidak dipublikasikan, dan dijaga kerahasiaannya oleh Panitia PPDB.",
++] as const;
