@@ -153,3 +153,11 @@ Status: APPROVED (owner: Google-only for simplicity); implementation UNVERIFIED 
 - Browser return: `refreshPaymentStatus` asks Midtrans server-to-server (`GET /v2/{order_id}/status`, server key) for the account's own unpaid attempts and applies the answer through the same recording path (order id must match; signature checked if present). The redirect/query string proves nothing.
 - Webhook responses: 200 processed/duplicate/no-op/content-rejected; 400 bad body; 401 bad signature; 404 unknown order; 413 oversized; 500 infrastructure failure (Midtrans retries).
 - Known gap: `refreshPaymentStatus` has no rate limit (each call can hit Midtrans for up to 5 attempts). Add throttling before production.
+
+## ADR-027 — Snap payment UI (P6-5; PROPOSED)
+- Placement: a "Pembayaran awal" card on `/dashboard`, shown only for a SUBMITTED registration (`src/features/payment/components/payment-card.tsx`). No new route. The full dashboard status presentation (admission decision, layout) stays Phase 8.
+- Trust: Snap callbacks (`onSuccess/onPending/onError/onClose`) are only hints that trigger `refreshPaymentStatus`; the status shown always comes from the server. The UI never shows "terverifikasi" from a callback. The browser sends no amount, order id or status.
+- Only public values reach the client: Snap script URL (from `getMidtransConfig`) and `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`, passed as props by the server component. If Midtrans is not configured the card renders with the button disabled and a notice. snap.js is injected once on demand (no `next/script`), with a retry after a network failure.
+- Return from e-wallet/bank pages: on mount with a PENDING attempt the card asks the server once to re-check. Owner must set the Midtrans dashboard Finish/Unfinish/Error redirect URLs to `https://<domain>/dashboard` (assumption; confirm with the real sandbox).
+- Labels (Indonesian) for NOT_STARTED/PENDING/PAID/FAILED/EXPIRED/CANCELED; FAILED/EXPIRED/CANCELED offer "Coba bayar lagi" (creates a new attempt server-side). Copy states the payment counts toward the admission fee and does not mean admission.
+- Known gaps: no server-side rate limit on `refreshPaymentStatus` (each dashboard visit with a PENDING attempt triggers one provider check); no CSP exists yet, so Phase 9 must allow `app(.sandbox).midtrans.com` when adding one.

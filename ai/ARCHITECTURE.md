@@ -1,6 +1,6 @@
 # Architecture (Initial Proposal)
 
-Status: initial proposal; confirm during Phase 0 after repository audit.
+Status: usulan awal yang sebagian besar sudah diimplementasikan (Phase 0-6 ditutup owner, 22 Okt 2026). Untuk kondisi sebenarnya, kode dan `CURRENT_STATE.md` menang atas dokumen ini.
 
 ## Layers
 - `src/app/`: App Router pages, layouts, route handlers.

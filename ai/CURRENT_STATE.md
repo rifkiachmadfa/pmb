@@ -1,76 +1,44 @@
 # Current State
 
-> Ringkasan kerja untuk melanjutkan coding. Verifikasi ulang hanya jika repository berubah atau status tidak jelas.
+> Ringkasan operasional untuk melanjutkan coding. Bukan bukti semua tes masih lolos; periksa kode/tes yang relevan saat mengubahnya. Diperbarui 22 Okt 2026 (penutupan Phase 0-6 oleh owner). Riwayat per-task ada di `CHANGELOG.md` dan `handoff/`.
 
 ## Proyek
-PMB SMK Yadika Tanjungsari Sumedang, tahun ajaran 2026/2027. Branch utama `main`. Stack: Next.js 16, React 19, TypeScript strict, Tailwind 4, Prisma 7, PostgreSQL/Supabase, Zod. Gunakan `package.json` dan lockfile sebagai sumber versi.
+PMB SMK Yadika Tanjungsari Sumedang 2026/2027. Branch `main`. Stack: Next.js 16, React 19, TypeScript strict, Tailwind 4, Prisma 7, PostgreSQL/Supabase, Supabase Auth (Google saja), Zod, Midtrans Snap. Versi sebenarnya: `package.json` + lockfile. Folder dokumentasi adalah `ai/` (bukan `.ai/`).
 
-## Kondisi berdasarkan repository dan audit terakhir
-- Fondasi aplikasi, konfigurasi server/env, Prisma schema, halaman placeholder, endpoint health, design tokens, komponen UI dasar, dan shared layout sudah tersedia.
-- P2-1 (design tokens, komponen UI, shared shell) telah ada di branch `main`; riwayat yang diperiksa Claude menunjukkan commit `8dae5bf` sebagai commit UI terbaru.
-- P2-2 (wizard lima langkah di `/pendaftaran`: stepper, Kembali/Lanjut, gerbang ketentuan, draft lokal di memori) IMPLEMENTED/TESTED; belum di-commit oleh owner. Langkah 3-4 masih placeholder tanpa field.
-- P2-3 (login Google-only via Supabase Auth, `/masuk`, `/auth/callback`, proxy, `requireAccount()`, `/dashboard` placeholder) IMPLEMENTED; end-to-end dengan Supabase/Google asli UNTESTED (lihat handoff P2-3). Butuh setup: provider Google di Supabase, Redirect URL, env, tabel `accounts` di database.
-- P2-4 (penutup Phase 2: `loading.tsx`, `error.tsx`, `not-found.tsx`, petunjuk pemulihan akun Google di `/masuk`, `ensureAccount` baca-dulu-baru-tulis, log diagnostik callback yang aman) IMPLEMENTED/TESTED di sandbox; belum di-commit owner.
-- Diagnosis `?error=account` (22 Okt 2026): `getDb().account` undefined karena klien Prisma lokal owner kedaluwarsa (`src/generated/` di-gitignore). Perbaikan: `npx prisma generate` + hapus `.next`. Hasil login setelah perbaikan dilaporkan owner berhasil, tetapi belum ada log bukti.
-- P3-1 (Data Siswa: 35 field, skema Zod bersama `student-schema.ts`, server action `validateStudentStep`, UI `step-student.tsx`) IMPLEMENTED/TESTED di sandbox; belum di-commit owner. Asumsi format/opsi/aturan KPS-KIP = ADR-021 (PROPOSED).
-- P4-1 (Data Orang Tua / Wali: 21 field Ayah/Ibu/Wali, `guardian-schema.ts`, server action `validateParentsStep`, UI `step-parents.tsx`) IMPLEMENTED; sebagian TESTED di sandbox; belum di-commit owner. Asumsi = ADR-022 (PROPOSED). Prisma `ParentGuardian` punya `birthDate`, form hanya Tahun Lahir: perlu migrasi di Phase 5 (belum diubah).
-- P4-2 (Data Sekolah Asal + Jurusan: 5 field, `school-schema.ts`, server action `validateSchoolStep`, UI `step-school.tsx`) IMPLEMENTED; sebagian TESTED di sandbox; belum di-commit owner. Asumsi = ADR-023 (PROPOSED). Kolom Jurusan belum ada di Prisma (Phase 5).
-- P5-1 (Konfirmasi + penyimpanan: ringkasan lengkap + Ubah per bagian, server action `submitRegistration`, transaksi tunggal Registration+StudentData+ParentGuardian+PreviousSchool+baris outbox `REGISTRATION_CREATED`, `/pendaftaran` -> `/dashboard` bila sudah terkirim, dashboard menampilkan pendaftaran milik akun) IMPLEMENTED; logika penyimpanan TESTED pada PostgreSQL 16 lokal (bukan Supabase); belum di-commit owner. Keputusan = ADR-024 (PROPOSED). Migrasi baru `20261022100000_registration_persistence` BELUM diterapkan ke database Supabase.
-- P6-1 (setup awal Midtrans: `src/config/payment.ts`, `midtrans-env.ts`, `midtrans.ts`) sudah ada di commit `5753e05` (`phase 6 init`); klaim lama "belum di-commit" tidak berlaku. Keputusan = ADR-025 (PROPOSED).
-- P6-2 (buat pembayaran: `createInitialPayment`, reuse percobaan PENDING, kunci baris registrasi, Midtrans dipanggil di luar transaksi) dan P6-3 (webhook `POST /api/payments/midtrans/notification`, verifikasi signature/identitas/nominal/mata uang, transisi status, idempotensi via `PaymentEvent.eventKey`, baris outbox `PAYMENT_VERIFIED` saat PAID, `syncOwnPendingPayments` untuk kembali dari browser tanpa webhook, server action `startInitialPayment`/`getPaymentStatus`/`refreshPaymentStatus`) IMPLEMENTED; TESTED di PostgreSQL 16 lokal dengan `fetch` Midtrans palsu (171 pemeriksaan); BELUM dicoba ke sandbox Midtrans asli dan server action BELUM diuji dengan sesi Google asli; belum di-commit owner. Keputusan = ADR-026 (PROPOSED). Tanpa migrasi baru. Tanpa UI.
-- Belum tersedia: UI/Snap popup dan halaman kembali dari Midtrans, uji ke sandbox Midtrans asli, Fonnte (hanya baris outbox `REGISTRATION_CREATED`/`PAYMENT_VERIFIED` yang dibuat, belum ada pengiriman WhatsApp), status pembayaran/keputusan di dashboard, rate limit `refreshPaymentStatus`, dan workflow admin (termasuk rekonsiliasi event bertanda `*_needs_reconciliation`).
-- `prisma/schema.prisma` memiliki model domain, tetapi status migrasi/koneksi database perlu diverifikasi sebelum mengandalkannya. Jangan jalankan migrasi ke database bersama tanpa persetujuan.
-- Auth provider: ADR-012 APPROVED (Supabase Auth, Google saja); implementasi ADR-020.
-- `phase1.patch` dan `p2-1.patch` ada di repository. Jangan hapus atau menerapkan ulang otomatis; periksa apakah diperlukan sebelum tindakan apa pun.
-- Folder dokumentasi adalah `ai/`, bukan `.ai/`.
+## Status fase
+- Phase 0-6: SELESAI, ditutup oleh owner pada 22 Okt 2026. Penutupan = keputusan owner; bukti uji ada di handoff dan "Catatan verifikasi" di bawah, bukan klaim PRODUCTION-VERIFIED.
+- Phase 7 (Fonnte): DILEWATI sementara atas permintaan owner. Dikerjakan nanti.
+- Phase 8 (dashboard status + keputusan penerimaan): LANGKAH BERIKUTNYA.
+- Phase 9-10: belum dimulai.
 
-## Langkah kerja berikutnya
-Owner: terapkan/commit P2-4, konfirmasi alur masuk (masuk -> `/dashboard` -> baris `accounts` -> Keluar -> `/pendaftaran` terlempar ke `/masuk`) dan tinjau tampilan; setelah itu Phase 2 ditandai DONE. Phase 3: owner tinjau tampilan Data Siswa dan konfirmasi asumsi ADR-021 (opsi agama/tempat tinggal, aturan `-` KPS/KIP, batas tinggi/berat). Phase 4: owner tinjau tampilan Data Orang Tua / Wali dan konfirmasi asumsi ADR-022 (aturan Wali semua-atau-tidak, opsi Wali, rentang tahun 1930-2010, NIK kembar); tinjau juga Data Sekolah Asal (ADR-023: pembagian tiga jurusan, batas karakter). Setelah itu lanjut Phase 5. Phase 5 (P5-1): owner terapkan/commit, jalankan migrasi `20261022100000_registration_persistence` ke Supabase (`npx prisma migrate deploy` dengan `DIRECT_URL`; tinjau SQL dulu, hanya dua `ADD COLUMN` nullable), lalu uji manual: masuk Google -> isi lima langkah -> Kirim -> nomor `PMB-XXXX-XXXX` -> `/dashboard` -> muat ulang -> `/pendaftaran` diarahkan ke dashboard. Konfirmasi ADR-024 (format nomor, satu pendaftaran per akun per periode, draf hanya di memori, tanpa edit setelah kirim). Phase 6: owner isi kunci sandbox Midtrans di `.env` lokal/hosting, set Notification URL di dashboard Midtrans (sandbox) ke `https://<domain>/api/payments/midtrans/notification` (butuh URL publik/tunnel saat lokal), lalu P6-4 = uji nyata ke sandbox (token, simulator pembayaran, notifikasi asli) untuk mengonfirmasi asumsi ADR-025/026 (awalan "SB-", FAILED->PAID, bentuk status API). UI/halaman pembayaran adalah prompt terpisah. Jangan menambahkan pengiriman WhatsApp sebelum Phase 7.
+## Yang sudah ada
+- Auth: login Google via Supabase (`/masuk`, `/auth/callback`, `src/proxy.ts`, `requireAccount()`), baris `accounts` di-upsert saat masuk. Keputusan: ADR-012, ADR-020.
+- Wizard `/pendaftaran` lima langkah (Ketentuan, Data Siswa, Data Orang Tua/Wali, Data Sekolah Asal, Konfirmasi) dengan validasi Zod bersama klien-server (`src/features/registration/*-schema.ts`) dan server action `validateStudentStep/ParentsStep/SchoolStep`. Draf hanya di memori (hilang saat muat ulang).
+- Penyimpanan: `submitRegistration` (satu transaksi: registrasi, siswa, wali, sekolah asal, baris outbox `REGISTRATION_CREATED`), nomor `PMB-XXXX-XXXX`, satu pendaftaran per akun per periode, tanpa edit setelah kirim. Migrasi: `setup`, `registration_persistence`.
+- Pembayaran awal Rp350.000 (Midtrans Snap): buat/reuse percobaan, webhook `POST /api/payments/midtrans/notification` (signature, identitas order, nominal tersimpan, mata uang, transisi status, idempoten via `PaymentEvent.eventKey`), sinkron status saat kembali dari browser (`refreshPaymentStatus`), baris outbox `PAYMENT_VERIFIED` saat PAID, kartu pembayaran + popup Snap di `/dashboard`. Pembayaran tidak mengubah `admissionStatus`. Keputusan: ADR-025 (+ amandemen tanpa cek awalan kunci), ADR-026, ADR-027.
+- Dashboard `/dashboard`: status pendaftaran dan kartu pembayaran. Status keputusan penerimaan belum ada.
 
-## Verifikasi P2-2 (22 Okt 2026, sandbox)
-- Dijalankan: `npm ci` (perlu `PRISMA_SCHEMA_ENGINE_BINARY=/bin/true` karena `binaries.prisma.sh` tidak terjangkau), `npm run typecheck`, `npm run lint`, `npm run build` — semuanya lolos.
-- Playwright/Chromium terhadap `next start` (desktop 1280px dan mobile 375px): Lanjut diblokir tanpa persetujuan + pesan error; centang menghapus error; fokus pindah ke judul langkah; Konfirmasi tanpa tombol Lanjut; Ubah kembali ke Ketentuan dengan centang tetap; batal centang mengembalikan ke langkah 1; tidak ada overflow horizontal.
-- Belum dijalankan: unit test (belum ada runner), pembaca layar, browser lain, perangkat nyata. Draft hilang saat reload (by design).
-- Catatan: teks ketentuan 3 menyebut "mendapatkan password"; redaksi perlu disetujui sekolah (ADR-013).
+## Celah dan utang teknis yang diketahui
+- Outbox `REGISTRATION_CREATED` dan `PAYMENT_VERIFIED` terus dibuat dengan status PENDING; belum ada pengirim WhatsApp (Phase 7 dilewati), jadi baris menumpuk.
+- `refreshPaymentStatus` belum punya rate limit (tiap kunjungan dashboard dengan percobaan PENDING memanggil Midtrans sekali).
+- Belum ada CSP; saat ditambahkan (Phase 9) izinkan `app.sandbox.midtrans.com` / `app.midtrans.com`.
+- Belum ada unit test runner permanen; uji sebelumnya berupa skrip sementara (tidak di-commit).
+- Belum ada workflow admin, termasuk rekonsiliasi event bertanda `*_needs_reconciliation`.
+- Alur sandbox Midtrans penuh (popup, simulator, webhook asli) dan login Google + server action dengan sesi asli belum terbukti oleh Claude di sandbox; owner yang menguji secara lokal.
 
-## Verifikasi P2-3 (22 Okt 2026, sandbox)
-- Dijalankan: `npm run typecheck`, `npm run lint`, `npm run build` (lolos); `next start` dengan env placeholder: `/pendaftaran` dan `/dashboard` tanpa sesi -> 307 ke `/masuk?next=...`; `/auth/callback` tanpa code / dengan error / dengan code palsu -> `/masuk?error=...`; `/masuk` dan `/api/health` 200; `?next=//evil.com` diabaikan; tes ad-hoc `sanitizeNextPath` (11 kasus) lolos.
-- Belum: login Google sungguhan, upsert Account ke database, refresh sesi, unit test runner, uji sesi terautentikasi.
+## Keputusan terbuka (perlu persetujuan sekolah/owner)
+- Asumsi bidang/aturan: ADR-021 (siswa), ADR-022 (orang tua/wali), ADR-023 (sekolah asal, jurusan), ADR-024 (nomor pendaftaran, tanpa edit setelah kirim) berstatus PROPOSED.
+- Kebijakan pembayaran: masa berlaku 24 jam, kebijakan refund (refund/chargeback tidak mengubah status), siapa merekonsiliasi event bermasalah.
+- Redaksi ketentuan 3 menyebut "mendapatkan password" (ADR-013).
+- Phase 8: kebijakan peran/otorisasi petugas (siapa boleh menetapkan keputusan penerimaan) BELUM disetujui; workflow admin tidak boleh dibuat sebelum itu.
 
-## Cara menjaga status
-Ini ringkasan operasional, bukan bukti semua tes masih lolos. Periksa kode/tes yang relevan saat mengubahnya. Setelah tugas, perbarui bagian ini hanya bila status atau langkah berikutnya berubah. Catat hasil tes sesuai perintah yang benar-benar dijalankan.
+## Langkah berikutnya: Phase 8
+1. Dashboard siswa: tampilkan tiga status terpisah (pendaftaran, pembayaran, keputusan penerimaan) dengan keputusan default "belum ditetapkan"; hanya data milik akun sendiri.
+2. Workflow admin keputusan penerimaan hanya setelah owner menyetujui model peran/otorisasi (tanya owner: siapa petugasnya, bagaimana login, perlu jejak audit?).
+3. Perbarui `ai/` di task yang sama.
 
-## Verifikasi P2-4 (22 Okt 2026, sandbox)
-- Dijalankan: `npm run typecheck`, `npm run lint`, `npm run build` (lolos). `next start` dengan env placeholder: `/pendaftaran` dan `/dashboard` tanpa sesi -> 307 ke `/masuk?next=...`; `/masuk` 200 dengan petunjuk pemulihan; `/masuk?error=account` menampilkan pesan akun; `/tidak-ada` 404 dengan halaman not-found; `/auth/callback` tanpa code / dengan error -> `/masuk?error=...`; `/api/health` 200; `?next=//evil.com` tidak menyebabkan redirect keluar.
-- Belum: login Google sungguhan dan upsert `accounts` di sandbox (tidak ada Supabase/DB); tampilan `error.tsx` saat runtime error; unit test runner; pembaca layar.
-
-## Verifikasi P3-1 (22 Okt 2026, sandbox)
-- Dijalankan: `npm ci`, `npm run typecheck`, `npm run lint`, `npm run build` (lolos). Skrip uji skema ad-hoc (14 kelompok: normalisasi, wajib isi, digit, tanggal mustahil, KPS/KIP, rentang angka, telepon, email, input tak tepercaya, pesan error tidak memuat nilai) lolos. Playwright/Chromium terhadap `next start` dengan halaman uji sementara (sudah dihapus): 26/26 pemeriksaan lolos (desktop 1280px + mobile 375px: ringkasan error, fokus ke field pertama yang salah, KPS/KIP bersyarat, tanggal 31 Feb, draft bertahan saat Kembali/Lanjut, tanpa overflow, tanpa error konsol).
-- Server action tanpa sesi -> `unauthenticated` (notifikasi sesi berakhir tampil, draft tetap).
-- Belum: jalur server action dengan sesi Google sungguhan (status `ok` -> lanjut), unit test runner (belum ada), pembaca layar, browser lain, perangkat nyata, penyimpanan ke database (Phase 5).
-
-## Verifikasi P4-1 (22 Okt 2026, sandbox)
-- Dijalankan: `npm ci`, `npm run typecheck`, `npm run lint`, `npm run build` (lolos). Skrip uji skema ad-hoc via `tsx` (38 pemeriksaan: wajib isi, "-" per peran, Wali semua-atau-tidak, NIK kembar, rentang tahun, opsi salah peran, normalisasi HP, input tak tepercaya, pesan tidak memuat nilai) lolos. `next start` + halaman uji sementara (sudah dihapus): HTML server memuat 21 kontrol, id unik, 21 label, 21 `aria-required`, opsi per peran benar.
-- Belum: interaksi browser (Chromium tidak bisa diunduh di sandbox), jalur server action dengan sesi Google sungguhan, unit test runner, pembaca layar, perangkat nyata, penyimpanan database (Phase 5).
-
-## Verifikasi P4-2 (22 Okt 2026, sandbox)
-- Dijalankan: `npm run typecheck`, `npm run lint`, `npm run build` (lolos). Skrip uji skema ad-hoc via `tsx` (26 pemeriksaan: wajib isi, opsi tertutup, tahun di luar daftar, normalisasi spasi, batas panjang, karakter tak sah, input tak tepercaya, pesan tidak memuat nilai) lolos. `next start` + halaman uji sementara (sudah dihapus): HTML server memuat 5 kontrol, 5 label, 5 `aria-required`, opsi status/tahun/jurusan sesuai form.
-- Belum: interaksi browser (Chromium tidak bisa diunduh di sandbox), server action dengan sesi Google sungguhan, unit test runner, pembaca layar, penyimpanan database (Phase 5).
-
-## Verifikasi P5-1 (22 Okt 2026, sandbox)
-- Dijalankan: `npm ci`, `npx prisma validate`, `npx prisma generate`, `npm run typecheck`, `npm run lint`, `npm run build` (lolos). `next start` dengan env placeholder: `/pendaftaran` dan `/dashboard` tanpa sesi -> 307 ke `/masuk?next=...`; `/masuk` dan `/api/health` 200.
-- PostgreSQL 16 lokal (apt) dengan migrasi `setup` + `registration_persistence` diterapkan via `psql`; skrip uji integrasi sementara (sudah dihapus dari repo) memanggil `submitRegistration`/`getOwnRegistration` asli: 32/32 lolos. Mencakup: baris yang dibuat (1 registrasi, 1 siswa, 3 atau 2 wali, 1 sekolah, 1 outbox PENDING tanpa payment), tanggal lahir 29 Feb 2008 tanpa pergeseran zona waktu, nomor identitas tetap string, `-` -> null, kirim ulang -> `already_submitted` tanpa baris baru, 6 kirim paralel -> tepat 1 `created`, akun lain tidak melihat data, payload tidak valid (terms, siswa, sekolah, sampah) tidak membuat baris dan respons tidak memuat nilai, kunci ekstra (`ownerId`, `status`, `admissionStatus`, `registrationNumber`) diabaikan, trigger yang memaksa gagal pada insert terakhir -> rollback penuh tanpa baris yatim, lalu kirim ulang berhasil.
-- Render SSR `StepReview` (10 pemeriksaan): 4 tombol Ubah, tanggal lahir, satuan, "Tidak ada Wali", tombol kirim nonaktif sebelum dicentang, daftar bagian yang belum lengkap, keadaan "Mengirim…", label checkbox.
-- Belum: login Google + server action dengan sesi asli (`ensureAccount` lalu simpan di Supabase), migrasi pada Supabase, interaksi browser (klik Kirim, panel sukses, fokus), tabrakan nomor registrasi (jalur coba ulang tidak dipaksa), unit test runner permanen (belum ada; skrip uji tidak di-commit), pembaca layar, perangkat nyata.
-
-## Verifikasi P6-1 (22 Okt 2026, sandbox)
-- Dijalankan: `npm ci`, `npm run typecheck`, `npm run lint`, `npm run build` (lolos; build tanpa env Midtrans). Skrip uji sementara (tidak di-commit) dengan `fetch` palsu: 32/32 lolos, mencakup validasi env (kunci hilang/kosong, kunci sandbox vs flag produksi, pesan error tanpa nilai kunci), URL sandbox/produksi, header Basic auth, `gross_amount` tetap 350000, jumlah `item_details` sama dengan total, tanpa data pribadi di body, pemetaan error (401/400, bentuk respons salah, bukan JSON, jaringan, timeout) tanpa menyalin body provider, penolakan order id tidak valid sebelum ada request, 2000 order id unik. Pemindaian bundle klien: tidak ada `MIDTRANS_SERVER_KEY`/modul pembayaran.
-- Belum: panggilan ke sandbox Midtrans asli (butuh kunci sandbox + jaringan), asumsi awalan kunci "SB-", format header Basic dengan kunci asli, snap.js di browser.
-- Langkah owner: isi `MIDTRANS_SERVER_KEY`, `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` (sandbox) di `.env` lokal dan di Vercel/hosting; jangan commit. Lalu task berikutnya P6-2: aksi buat pembayaran (baris `Payment` PENDING + token) dan kepemilikan.
-
-## Verifikasi P6-2/P6-3 (22 Okt 2026, sandbox)
-- Dijalankan: `npm ci`, `npx prisma generate`, `npm run typecheck`, `npm run lint`, `npm run build` (lolos; rute `/api/payments/midtrans/notification` terdaftar), pemindaian `.next/static` untuk kunci/modul pembayaran (bersih).
-- PostgreSQL 16 lokal (apt), migrasi yang ada diterapkan via `psql`; skrip uji sementara (tidak di-commit; salinan diserahkan terpisah) memanggil kode asli dengan `fetch` palsu: 171/171 lolos. Mencakup: aturan murni (pemetaan status, transisi, parsing nominal, signature, event key); buat pembayaran (belum submit, nominal/expiry/auth header, reuse tanpa panggilan baru, 8 klik paralel -> 1 baris + 1 panggilan, kegagalan provider -> CANCELED lalu coba ulang, percobaan basi, tanpa konfigurasi, tanpa data pribadi ke provider); notifikasi (body salah, signature salah/kunci salah/nominal dimanipulasi, order tak dikenal, pending, settlement, 5+6 pengulangan, pending/expire/deny/refund terlambat tidak menurunkan PAID, nominal salah/pecahan/sampah/mata uang salah ditolak, deny->FAILED->PAID, expire lalu settlement ditandai rekonsiliasi, cancel, capture challenge/accept/deny, dua percobaan sama-sama dibayar -> hanya satu PAID + satu outbox, pembayaran tidak mengubah `admissionStatus`); rute webhook (400/413/401/404/200/500); sync (404 provider, 500 provider, order id salah, signature salah, nominal salah, settlement tanpa webhook, akun lain tidak berdampak, webhook setelah sync = duplicate, webhook+sync paralel = 1 PAID/1 event/1 outbox); log tidak memuat kunci server, body provider, Snap token, atau email.
-- Mutation check: merusak cek nominal (12 gagal), cek event ganda (crash di unique constraint), dan aturan PAID final (6 gagal) terdeteksi; kode dipulihkan.
-- `next start` + curl: GET 405; POST kosong/JSON rusak/bentuk salah 400; signature salah 401; signature valid tapi order tak dikenal 404 (proxy tidak mengalihkan `/api/`).
-- Belum: sandbox Midtrans asli, server action dengan sesi Google asli, Supabase (hanya PostgreSQL lokal), rate limit, unit test runner permanen, UI.
+## Catatan verifikasi (ringkas)
+- Sandbox Claude: `npm ci` butuh `PRISMA_SCHEMA_ENGINE_BINARY=/bin/true`. Typecheck, lint, build lolos pada tiap task terakhir (P6-5 termasuk).
+- Logika penyimpanan registrasi diuji pada PostgreSQL 16 lokal (32 pemeriksaan); logika pembayaran/webhook diuji pada PostgreSQL 16 lokal dengan `fetch` Midtrans palsu (171 pemeriksaan + 3 mutation check). Bukan Supabase.
+- UI kartu pembayaran diuji di Chromium (status, nonaktif tanpa konfigurasi, klik tanpa sesi); bundle klien bersih dari kunci server.
+- Rincian per task: `ai/handoff/*.md` dan `CHANGELOG.md`.

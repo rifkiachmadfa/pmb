@@ -9,24 +9,17 @@ import { z } from "zod";
  *  - NEXT_PUBLIC_MIDTRANS_CLIENT_KEY: public key used by snap.js in the browser (later task).
  *  - MIDTRANS_IS_PRODUCTION: "true" for production, otherwise sandbox.
  *
- * Keys of the wrong environment are rejected (sandbox keys start with "SB-"), so a
- * sandbox key can never be used against production or the other way round.
+ * No key-prefix check: current sandbox keys look like "Mid-server-..." (older ones
+ * "SB-Mid-server-..."), so the prefix cannot tell sandbox from production. The
+ * environment is chosen ONLY by MIDTRANS_IS_PRODUCTION (which picks the host);
+ * Midtrans rejects a key used against the wrong host with 401, which surfaces as
+ * a provider error, never as a payment.
  */
-const envSchema = z
-  .object({
-    MIDTRANS_SERVER_KEY: z.string().trim().min(1),
-    NEXT_PUBLIC_MIDTRANS_CLIENT_KEY: z.string().trim().min(1),
-    MIDTRANS_IS_PRODUCTION: z.enum(["true", "false"]).default("false"),
-  })
-  .superRefine((env, ctx) => {
-    const production = env.MIDTRANS_IS_PRODUCTION === "true";
-    const sandboxKey = (key: string) => key.startsWith("SB-");
-    for (const name of ["MIDTRANS_SERVER_KEY", "NEXT_PUBLIC_MIDTRANS_CLIENT_KEY"] as const) {
-      if (sandboxKey(env[name]) === production) {
-        ctx.addIssue({ code: "custom", path: [name], message: "key does not match environment" });
-      }
-    }
-  });
+const envSchema = z.object({
+  MIDTRANS_SERVER_KEY: z.string().trim().min(1),
+  NEXT_PUBLIC_MIDTRANS_CLIENT_KEY: z.string().trim().min(1),
+  MIDTRANS_IS_PRODUCTION: z.enum(["true", "false"]).default("false"),
+});
 
 export type MidtransConfig = {
   serverKey: string;

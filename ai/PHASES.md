@@ -1,5 +1,7 @@
 # Phase Specifications
 
+> Status saat ini (22 Okt 2026): Phase 0-6 selesai (ditutup owner), Phase 7 dilewati sementara, Phase 8 berikutnya. Lihat `ROADMAP.md` dan `CURRENT_STATE.md`. Spesifikasi di bawah tidak diubah.
+
 Each phase must have a task plan, file scope, acceptance criteria, tests, risks, and handoff. Do not claim completion without evidence.
 
 ## Phase 0 — Audit and project baseline
@@ -145,7 +147,7 @@ Acceptance: reload does not lose persisted registration; user can access only th
 - Handle duplicate/out-of-order notifications and allowed state transitions.
 Acceptance: sandbox tests cover success, pending, failure/expiry, invalid notification, wrong amount, repeated callback, and browser-return without webhook.
 
-## Phase 7 — Fonnte
+## Phase 7 — Fonnte (DILEWATI sementara atas permintaan owner)
 - Send notification after registration creation and after verified successful payment.
 - Store notification state, attempts, and safe error metadata.
 - Implement retries without duplicate side effects.

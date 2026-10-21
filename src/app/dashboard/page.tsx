@@ -3,7 +3,10 @@ import Link from "next/link";
 
 import { PageContainer } from "@/components/layout/page-container";
 import { buttonVariants } from "@/components/ui/button";
+import { PaymentCard, type SnapConfig } from "@/features/payment/components/payment-card";
 import { requireAccount } from "@/server/auth/session";
+import { getOwnPayment } from "@/server/payments/create";
+import { getMidtransConfig } from "@/server/payments/midtrans-env";
 import { getOwnRegistration } from "@/server/registration/queries";
 
 export const metadata: Metadata = {
@@ -16,6 +19,16 @@ const dateFormat = new Intl.DateTimeFormat("id-ID", {
   timeZone: "Asia/Jakarta",
 });
 
+/** Public Snap values only (client key + script URL). Null when Midtrans is not configured. */
+function getSnapConfig(): SnapConfig | null {
+  try {
+    const config = getMidtransConfig();
+    return { jsUrl: config.snapJsUrl, clientKey: config.clientKey };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Protected dashboard. Shows only the signed-in account's own registration
  * (looked up by owner, never by an id from the browser). Payment and admission
@@ -24,6 +37,8 @@ const dateFormat = new Intl.DateTimeFormat("id-ID", {
 export default async function DashboardPage() {
   const account = await requireAccount("/dashboard");
   const registration = await getOwnRegistration(account.id);
+  const payment =
+    registration?.status === "SUBMITTED" ? await getOwnPayment(account.id) : null;
 
   return (
     <PageContainer className="flex flex-col gap-6">
@@ -66,11 +81,15 @@ export default async function DashboardPage() {
             </div>
           </dl>
           <p className="text-sm text-muted-foreground">
-            Status pembayaran dan keputusan penerimaan akan ditampilkan di sini
-            pada tahap berikutnya; keduanya terpisah dari status pendaftaran.
+            Keputusan penerimaan akan ditampilkan di sini pada tahap berikutnya;
+            statusnya terpisah dari status pendaftaran dan pembayaran.
           </p>
         </section>
-      ) : (
+      ) : null}
+      {payment ? (
+        <PaymentCard initial={payment} snap={getSnapConfig()} />
+      ) : null}
+      {registration ? null : (
         <>
           <p>Anda belum mengirim pendaftaran untuk periode ini.</p>
           <div>

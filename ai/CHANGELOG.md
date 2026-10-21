@@ -1,5 +1,14 @@
 # Project Changelog
 
+## Docs cleanup — Phase 0-6 ditutup (2026-10-22)
+- Owner menutup Phase 0-6; Phase 7 (Fonnte) dilewati sementara; Phase 8 berikutnya.
+- `CURRENT_STATE.md` ditulis ulang ringkas (log verifikasi per task dipindah ke handoff/CHANGELOG), `ROADMAP.md` diperbarui, `PHASES.md` diberi catatan status, `ARCHITECTURE.md` status diperbarui. `DECISIONS.md`, `handoff/` dan riwayat CHANGELOG tidak diubah.
+
+## P6-5 — Snap payment UI (2026-10-22) — IMPLEMENTED, PARTIALLY TESTED
+- Added `PaymentCard` (`src/features/payment/components/payment-card.tsx`) on `/dashboard` for SUBMITTED registrations: Rp350.000 pay button, Snap popup via snap.js, status labels, retry, "periksa status", one auto re-check when PENDING. Callbacks never mark success; the server verifies with Midtrans.
+- `dashboard/page.tsx` passes the owner's stored payment summary and only the public Snap URL + client key. No migration, no new dependency.
+- Verified: typecheck, lint, build, client bundle scan (no server key), Chromium check of NOT_STARTED/PENDING/PAID/EXPIRED/unconfigured states and the signed-out click path. NOT verified: popup with real snap.js/sandbox keys, signed-in server actions. ADR-027.
+
 ## P6-2 + P6-3 — Pembayaran awal: buat transaksi, verifikasi notifikasi, sinkronisasi status (2026-10-22) — IMPLEMENTED; TESTED on local PostgreSQL 16 with stubbed Midtrans (171 checks + 3 mutation checks); real Midtrans sandbox and signed-in server actions UNTESTED
 - New: `src/server/payments/{status,lock,create,notification}.ts`, `src/app/api/payments/midtrans/notification/route.ts`, `src/features/payment/actions.ts` (`startInitialPayment`, `getPaymentStatus`, `refreshPaymentStatus`). Modified: `src/config/payment.ts` (expiry 24 h, stale 60 s), `midtrans-env.ts` (status API host), `midtrans.ts` (`expiry` in the request, `getTransactionStatus`).
 - Behavior: one unpaid attempt reused; no attempt after PAID; webhook verifies signature, order identity, stored amount, currency and allowed transition; duplicates/out-of-order never downgrade or re-notify; PAID queues one `PAYMENT_VERIFIED` outbox row; admission status untouched. No schema change, no migration, no dependency.
