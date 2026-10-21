@@ -27,7 +27,13 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
  * Role is never taken from the client or the provider: new rows are STUDENT.
  */
 export async function ensureAccount(user: SessionUser): Promise<Account> {
-  return getDb().account.upsert({
+  const db = getDb();
+  // Read first: private pages call this on every request, so avoid a write
+  // (and an updated_at bump) unless the row is new or the email changed.
+  const existing = await db.account.findUnique({ where: { authProviderId: user.id } });
+  if (existing && existing.email === user.email) return existing;
+
+  return db.account.upsert({
     where: { authProviderId: user.id },
     create: { authProviderId: user.id, email: user.email },
     // Keep the mirrored email in sync; never touch `role`.

@@ -52,6 +52,24 @@ export default async function MasukPage({
           kata sandi yang disimpan di portal ini.
         </p>
       </form>
+
+      <section aria-labelledby="pemulihan-akun" className="flex flex-col gap-1 text-sm">
+        <h2 id="pemulihan-akun" className="font-medium">
+          Tidak bisa masuk ke akun Google?
+        </h2>
+        <p className="text-muted-foreground">
+          Kata sandi dan pemulihan akun dikelola oleh Google, bukan portal ini.{" "}
+          <a
+            href="https://support.google.com/accounts/answer/7682439"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-foreground underline underline-offset-4"
+          >
+            Pelajari cara memulihkan akun Google
+          </a>
+          .
+        </p>
+      </section>
     </PageContainer>
   );
 }

@@ -10,6 +10,8 @@ PMB SMK Yadika Tanjungsari Sumedang, tahun ajaran 2026/2027. Branch utama `main`
 - P2-1 (design tokens, komponen UI, shared shell) telah ada di branch `main`; riwayat yang diperiksa Claude menunjukkan commit `8dae5bf` sebagai commit UI terbaru.
 - P2-2 (wizard lima langkah di `/pendaftaran`: stepper, Kembali/Lanjut, gerbang ketentuan, draft lokal di memori) IMPLEMENTED/TESTED; belum di-commit oleh owner. Langkah 2-4 masih placeholder tanpa field.
 - P2-3 (login Google-only via Supabase Auth, `/masuk`, `/auth/callback`, proxy, `requireAccount()`, `/dashboard` placeholder) IMPLEMENTED; end-to-end dengan Supabase/Google asli UNTESTED (lihat handoff P2-3). Butuh setup: provider Google di Supabase, Redirect URL, env, tabel `accounts` di database.
+- P2-4 (penutup Phase 2: `loading.tsx`, `error.tsx`, `not-found.tsx`, petunjuk pemulihan akun Google di `/masuk`, `ensureAccount` baca-dulu-baru-tulis, log diagnostik callback yang aman) IMPLEMENTED/TESTED di sandbox; belum di-commit owner.
+- Diagnosis `?error=account` (22 Okt 2026): `getDb().account` undefined karena klien Prisma lokal owner kedaluwarsa (`src/generated/` di-gitignore). Perbaikan: `npx prisma generate` + hapus `.next`. Hasil login setelah perbaikan dilaporkan owner berhasil, tetapi belum ada log bukti.
 - Belum tersedia: field form data siswa/orang tua/sekolah asal, persistence pendaftaran, isi dashboard (status), integrasi Midtrans/Fonnte, dan workflow admin.
 - `prisma/schema.prisma` memiliki model domain, tetapi status migrasi/koneksi database perlu diverifikasi sebelum mengandalkannya. Jangan jalankan migrasi ke database bersama tanpa persetujuan.
 - Auth provider: ADR-012 APPROVED (Supabase Auth, Google saja); implementasi ADR-020.
@@ -17,7 +19,7 @@ PMB SMK Yadika Tanjungsari Sumedang, tahun ajaran 2026/2027. Branch utama `main`
 - Folder dokumentasi adalah `ai/`, bukan `.ai/`.
 
 ## Langkah kerja berikutnya
-Owner menyiapkan Supabase + Google OAuth lalu menguji login end-to-end (langkah di handoff P2-3). Setelah itu Phase 3 (field Data Siswa) bila owner meminta. Jangan menambahkan penyimpanan database, pembayaran, atau notifikasi sebelum fasenya.
+Owner: terapkan/commit P2-4, konfirmasi alur masuk (masuk -> `/dashboard` -> baris `accounts` -> Keluar -> `/pendaftaran` terlempar ke `/masuk`) dan tinjau tampilan; setelah itu Phase 2 ditandai DONE. Berikutnya Phase 3 (field Data Siswa) bila owner meminta. Jangan menambahkan penyimpanan database, pembayaran, atau notifikasi sebelum fasenya.
 
 ## Verifikasi P2-2 (22 Okt 2026, sandbox)
 - Dijalankan: `npm ci` (perlu `PRISMA_SCHEMA_ENGINE_BINARY=/bin/true` karena `binaries.prisma.sh` tidak terjangkau), `npm run typecheck`, `npm run lint`, `npm run build` — semuanya lolos.
@@ -31,3 +33,7 @@ Owner menyiapkan Supabase + Google OAuth lalu menguji login end-to-end (langkah 
 
 ## Cara menjaga status
 Ini ringkasan operasional, bukan bukti semua tes masih lolos. Periksa kode/tes yang relevan saat mengubahnya. Setelah tugas, perbarui bagian ini hanya bila status atau langkah berikutnya berubah. Catat hasil tes sesuai perintah yang benar-benar dijalankan.
+
+## Verifikasi P2-4 (22 Okt 2026, sandbox)
+- Dijalankan: `npm run typecheck`, `npm run lint`, `npm run build` (lolos). `next start` dengan env placeholder: `/pendaftaran` dan `/dashboard` tanpa sesi -> 307 ke `/masuk?next=...`; `/masuk` 200 dengan petunjuk pemulihan; `/masuk?error=account` menampilkan pesan akun; `/tidak-ada` 404 dengan halaman not-found; `/auth/callback` tanpa code / dengan error -> `/masuk?error=...`; `/api/health` 200; `?next=//evil.com` tidak menyebabkan redirect keluar.
+- Belum: login Google sungguhan dan upsert `accounts` di sandbox (tidak ada Supabase/DB); tampilan `error.tsx` saat runtime error; unit test runner; pembaca layar.

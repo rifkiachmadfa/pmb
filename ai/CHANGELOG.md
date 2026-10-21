@@ -1,5 +1,13 @@
 # Project Changelog
 
+## P2-4 — Phase 2 closing (2026-10-22) — IMPLEMENTED, TESTED in sandbox (typecheck/lint/build + curl checks)
+- Added `src/app/loading.tsx`, `error.tsx` (generic message, error object never rendered), `not-found.tsx`.
+- `/masuk`: added account-recovery hint (recovery is handled by Google; link to Google support). No password UI exists by design (ADR-020).
+- `ensureAccount()` now reads first and writes only when the row is new or the email changed (private pages call it on every request).
+- `/auth/callback`: failure of `ensureAccount` now logs a redacted summary (error name, code, first message line, top stack frames); emails and DB URLs are redacted.
+- Diagnosed `?error=account` as a stale local Prisma client (`getDb().account` undefined); fix is `npx prisma generate` and clearing `.next`.
+- Docs: CURRENT_STATE.md, ROADMAP.md, handoff/P2-4.md.
+
 ## P2-2 — Five-step wizard skeleton (2026-10-22) — IMPLEMENTED, TESTED (typecheck/lint/build + local Playwright check)
 - Added `/pendaftaran` with a client-side wizard: Ketentuan, Data Siswa, Data Orang Tua / Wali, Data Sekolah Asal, Konfirmasi.
 - Stepper (compact bar on mobile, ordered list from `md`; only reached steps are clickable), Kembali/Lanjut navigation, focus moves to the step heading on change.
