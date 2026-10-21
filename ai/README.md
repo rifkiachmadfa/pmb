@@ -1,21 +1,15 @@
-# AI Project Documentation
+# AI project notes
 
-This directory is the persistent project memory for Claude and other coding agents.
+Dokumentasi ini adalah memori proyek, bukan daftar bacaan wajib setiap tugas.
 
-## Read order at the start of every task
-1. `CURRENT_STATE.md`
-2. `PROJECT_CONTEXT.md`
-3. `ROADMAP.md`
-4. `PHASES.md`
-5. `BUSINESS_RULES.md`
-6. `DECISIONS.md`
-7. Relevant documents: `ARCHITECTURE.md`, `DATA_MODEL.md`, `SECURITY.md`, `INTEGRATIONS.md`, `TESTING.md`
-8. Latest file in `handoff/`, if it exists.
+## Aturan membaca
+- Setiap tugas: baca `CURRENT_STATE.md` dan periksa status Git.
+- Baca hanya dokumen yang relevan dengan permintaan: `BUSINESS_RULES.md` untuk perilaku produk; `DECISIONS.md` untuk keputusan; `DATA_MODEL.md` untuk database; `SECURITY.md` untuk keamanan; `INTEGRATIONS.md` untuk Midtrans/Fonnte; `PHASES.md` atau `ROADMAP.md` hanya jika ruang lingkup fase perlu dipastikan.
+- `ARCHITECTURE.md`, `TESTING.md`, `CHANGELOG.md`, dan `handoff/` dibaca hanya bila diperlukan. Jangan membaca semua file sebagai ritual.
 
-## Maintenance rules
-- Record verified repository facts, not assumptions.
-- Distinguish APPROVED, PROPOSED, UNKNOWN, IMPLEMENTED, TESTED, and BLOCKED.
-- Update current state, roadmap, changelog, and handoff after each completed task.
-- Do not claim a feature is implemented or tested without code/test evidence.
-- Keep sensitive personal data, credentials, tokens, and production secrets out of these documents.
-- When a document conflicts with code or owner instruction, investigate and document the discrepancy.
+## Pemeliharaan
+- Catat fakta terverifikasi; bedakan keputusan APPROVED, PROPOSED, dan UNKNOWN.
+- Perbarui `CURRENT_STATE.md` hanya ketika status atau langkah berikutnya berubah. Perbarui dokumen lain hanya jika isi terkait berubah.
+- Jangan membuat handoff/changelog untuk setiap perubahan kecil atau menduplikasi informasi yang sudah tercatat.
+- Jangan menaruh secret atau data pribadi siswa dalam dokumentasi.
+- Jangan klaim kode/test/produksi terverifikasi tanpa bukti nyata.
