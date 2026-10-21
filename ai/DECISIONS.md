@@ -99,3 +99,12 @@ Status: APPROVED (owner: Google-only for simplicity); implementation UNVERIFIED 
 - No service-role key, no password storage. Only public URL + publishable key are used (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`).
 - Account recovery = Google account recovery (no password reset UI exists). Staff roles (`ADMISSION_STAFF`) are NOT assignable through any UI; role changes need an approved, separate mechanism.
 - Known limits: a pre-existing Account with the same email but another `authProviderId` makes sign-in fail with a generic error (no automatic linking). Supabase RLS on `accounts` is not configured (Prisma connects as DB owner; no client-side table access is used).
+
+## ADR-021 — Data Siswa validation defaults (PROPOSED, awaiting school approval)
+- One pure Zod module (`src/features/registration/student-schema.ts`) is used by the browser (usability) and by the server action `validateStudentStep` (the real check, which also verifies the session). It validates only; nothing is stored until Phase 5.
+- Formats assumed from Indonesian standards, not from the school: NISN 10 digits, NIK 16 digits, No. KK 16 digits, postal code 5 digits, mobile `08…`/`+62`/`62` (stored as `08…`), No. Akta free-form (letters/digits/`./-`, max 50).
+- KPS/KIP convention (owner form: "isi dengan -"): recipient `Tidak` => number/name is `-` and stored as `null`; recipient `Ya` => a real value is required and `-` is rejected. Landline: `-` => `null`. The `Ya`/`Tidak` select itself cannot be `-`. School must confirm.
+- Option lists (religion, residence type, transport, citizenship, gender) are taken from the owner's form; "Kristen Katolik" / "Kristen Protestan" and "Bersama Orang Tua" / "Wali" are an interpretation of the pasted text. Birth-year list kept as 1990-2024 per the form.
+- Sanity bounds (not school policy): height 100-250 cm, weight 20-200 kg, distance 0-1000 km, birth order 1-30, siblings 0-30. Height/weight are integers because the schema columns are integers (precision still OPEN).
+- Browser gate: leaving Data Siswa (Lanjut or stepper) requires a valid draft; server re-validates on Lanjut. Final server validation of the whole registration happens again in Phase 5 persistence.
+- Server action never logs or echoes submitted values; responses contain only field names and fixed messages.

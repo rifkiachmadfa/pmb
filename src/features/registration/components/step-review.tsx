@@ -1,6 +1,7 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { RegistrationDraft } from "../draft";
+import { validateStudentDraft } from "../student-schema";
 
 type Props = {
   draft: RegistrationDraft;
@@ -12,6 +13,19 @@ const SECTIONS = [
   { step: 2, label: "Data Orang Tua / Wali", key: "guardian" },
   { step: 3, label: "Data Sekolah Asal", key: "previousSchool" },
 ] as const;
+
+const countFilled = (section: Record<string, string>) =>
+  Object.values(section).filter((v) => v.trim() !== "").length;
+
+/** Summary line only; the full review (values + edit links) is Phase 5. */
+function summarize(key: (typeof SECTIONS)[number]["key"], draft: RegistrationDraft) {
+  const filled = countFilled(draft[key]);
+  if (key === "student") {
+    if (validateStudentDraft(draft.student).ok) return "Lengkap";
+    return filled > 0 ? `${filled} isian terisi, belum lengkap` : "Belum ada isian";
+  }
+  return filled > 0 ? `${filled} isian terisi` : "Belum ada isian";
+}
 
 export function StepReview({ draft, onEdit }: Props) {
   return (
@@ -35,13 +49,12 @@ export function StepReview({ draft, onEdit }: Props) {
         </div>
 
         {SECTIONS.map(({ step, label, key }) => {
-          const filled = Object.keys(draft[key]).length;
           return (
             <div key={key} className="flex items-center justify-between gap-4 py-3">
               <div>
                 <dt className="text-sm font-medium">{label}</dt>
                 <dd className="text-sm text-muted-foreground">
-                  {filled > 0 ? `${filled} isian terisi` : "Belum ada isian"}
+                  {summarize(key, draft)}
                 </dd>
               </div>
               <Button variant="outline" size="sm" onClick={() => onEdit(step)}>

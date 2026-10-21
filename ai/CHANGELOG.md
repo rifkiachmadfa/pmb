@@ -1,5 +1,11 @@
 # Project Changelog
 
+## P3-1 — Data Siswa fields and validation (2026-10-22) — IMPLEMENTED, TESTED in sandbox (typecheck/lint/build + schema checks + Playwright)
+- Step 2 now has the full owner-supplied field list in six sections (identity, address, KPS/KIP, family/physical, residence/transport, contact). New `ui/field`, `ui/select`, `ui/radio` primitives.
+- `student-schema.ts`: shared Zod validation + normalization (strings for NISN/NIK/KK/akta/phones/postal code, `-` convention, real-date check). `actions.ts`: server action `validateStudentStep` (session check + Zod, no storage, no logging).
+- Wizard: errors on blur and after Lanjut, error summary, focus first invalid field, server check before advancing, "session ended" notice that keeps the draft, no jumping past an invalid Data Siswa. Review step shows student completeness.
+- Decisions/assumptions: ADR-021 (PROPOSED). No schema/migration change.
+
 ## P2-4 — Phase 2 closing (2026-10-22) — IMPLEMENTED, TESTED in sandbox (typecheck/lint/build + curl checks)
 - Added `src/app/loading.tsx`, `error.tsx` (generic message, error object never rendered), `not-found.tsx`.
 - `/masuk`: added account-recovery hint (recovery is handled by Google; link to Google support). No password UI exists by design (ADR-020).

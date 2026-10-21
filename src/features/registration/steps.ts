@@ -11,6 +11,11 @@ export type RegistrationStepId = (typeof REGISTRATION_STEPS)[number]["id"];
 
 export const LAST_STEP_INDEX = REGISTRATION_STEPS.length - 1;
 
+/** Index of "Data Siswa"; leaving it forward requires a valid student draft. */
+export const STUDENT_STEP_INDEX = REGISTRATION_STEPS.findIndex(
+  (s) => s.id === "data-siswa",
+);
+
 /**
  * Official terms supplied by the owner (ai/BUSINESS_RULES.md), verbatim.
  * Term 3 mentions receiving a password; the wording still needs school/owner
