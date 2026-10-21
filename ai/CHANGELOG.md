@@ -17,6 +17,11 @@
 - Not in scope / not done: auth screens, protected routes, wizard skeleton (later Phase 2 tasks).
 - Docs: ARCHITECTURE.md (UI section), DECISIONS.md (ADR-017 note, ADR-019), CURRENT_STATE.md, ROADMAP.md, handoff/P2-1.md.
 
+## P2-3 — Google-only authentication (2026-10-22) — IMPLEMENTED, PARTIALLY TESTED
+- Added Supabase Auth (Google only) with `@supabase/ssr`, `src/proxy.ts`, `/masuk`, `/auth/callback`, sign-out, `/dashboard` placeholder, header account actions, and `requireAccount()` on `/pendaftaran` and `/dashboard`. `Account` is upserted on every login.
+- Added env vars `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`.env.example`). ADR-012 approved, ADR-020 added.
+- Verified: typecheck, lint, build, route-redirect checks with placeholder env, ad-hoc test of `sanitizeNextPath`. NOT verified: real Google login, Account upsert against a database, session refresh. See `ai/handoff/P2-3.md`.
+
 ## DB-SCHEMA-001 — Prisma domain schema v1 (2026-10-21) — IMPLEMENTED, UNMIGRATED, PROPOSED
 - Replaced baseline `prisma/schema.prisma` with domain models (accounts, registrations, student data, parent/guardian, previous school, payments, payment events, notification deliveries, admission decisions).
 - Verified: `prisma format`, `prisma validate`, `prisma generate`, `npm run typecheck`, `npm run lint` (sandbox needs `PRISMA_SCHEMA_ENGINE_BINARY=/bin/true`). Not run: migrations, DB connection.

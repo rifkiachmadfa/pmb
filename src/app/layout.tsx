@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 
+import { HeaderAccount } from "@/components/layout/header-account";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SkipLink } from "@/components/layout/skip-link";
@@ -21,7 +22,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="id" className="h-full">
       <body className="flex min-h-full flex-col">
         <SkipLink />
-        <SiteHeader />
+        <SiteHeader>
+          <HeaderAccount />
+        </SiteHeader>
         <main id="main" className="flex-1 py-8 sm:py-12">
           {children}
         </main>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { PageContainer } from "@/components/layout/page-container";
+import { requireAccount } from "@/server/auth/session";
 import { RegistrationWizard } from "@/features/registration/components/registration-wizard";
 
 export const metadata: Metadata = {
@@ -8,10 +9,11 @@ export const metadata: Metadata = {
 };
 
 /**
- * Wizard skeleton. NOT yet protected: authentication and route protection are
- * a later Phase 2 task (blocked on ADR-012). No data is persisted or sent.
+ * Wizard skeleton. Requires a signed-in account (Google via Supabase Auth).
+ * No data is persisted or sent yet.
  */
-export default function PendaftaranPage() {
+export default async function PendaftaranPage() {
+  await requireAccount("/pendaftaran");
   return (
     <PageContainer className="flex flex-col gap-8">
       <header className="flex flex-col gap-1">

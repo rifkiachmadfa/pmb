@@ -51,8 +51,7 @@ Status: APPROVED
 Successful payment does not automatically mean admitted. Admission decision is controlled by authorized school personnel and requires an approved admin workflow.
 
 ## ADR-012 — Authentication provider
-Status: PROPOSED
-Supabase Auth is a candidate. Confirm the implementation and its relationship to Prisma/PostgreSQL after inspecting the repository and current official documentation.
+Status: APPROVED BY OWNER INSTRUCTION (2026-10-22): Supabase Auth with Google as the ONLY sign-in method (no email/password, no magic link). See ADR-020 for the implementation.
 
 ## ADR-013 — Secure interpretation of the supplied terms
 Status: PROPOSED — OWNER/SCHOOL REVIEW
@@ -90,3 +89,13 @@ Status: PROPOSED (implemented; palette itself is APPROVED by owner in PHASES.md)
 - No new dependencies: Checkbox is a styled native `<input type="checkbox">`; Button exports `buttonVariants` for use on `next/link` instead of Radix `Slot`/`asChild`. Revisit if a component needs real Radix behavior (Select, Dialog, ...).
 - Layout: root layout owns the shell; pages must not render their own `<main>`.
 
+## ADR-020 — Google-only auth with Supabase Auth + Prisma Account (P2-3)
+Status: APPROVED (owner: Google-only for simplicity); implementation UNVERIFIED against a real Supabase project.
+- Packages (exact): `@supabase/supabase-js` 2.117.3, `@supabase/ssr` 0.12.7. Chosen ≥14 days old; newer 2.118.0 deliberately skipped.
+- Flow: server action `signInWithGoogle` -> Google -> `/auth/callback` (PKCE `exchangeCodeForSession`) -> `ensureAccount()` upserts `Account` (provider subject = `authProviderId`, lowercase email, role STUDENT) -> redirect to sanitized `next`. Every login is recorded, paid or not.
+- Session = Supabase cookies via `@supabase/ssr`. Server identity uses `getClaims()` (JWT verified), never `getSession()`.
+- `src/proxy.ts` (Next 16 name for middleware) refreshes the session and redirects unauthenticated visitors from `/pendaftaran` and `/dashboard` to `/masuk?next=`. This is OPTIMISTIC only; each private page calls `requireAccount()`, and future private endpoints/actions must do the same plus an ownership check.
+- `?next=` is accepted only as a same-origin relative path (`sanitizeNextPath`).
+- No service-role key, no password storage. Only public URL + publishable key are used (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`).
+- Account recovery = Google account recovery (no password reset UI exists). Staff roles (`ADMISSION_STAFF`) are NOT assignable through any UI; role changes need an approved, separate mechanism.
+- Known limits: a pre-existing Account with the same email but another `authProviderId` makes sign-in fail with a generic error (no automatic linking). Supabase RLS on `accounts` is not configured (Prisma connects as DB owner; no client-side table access is used).

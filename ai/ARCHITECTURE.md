@@ -38,7 +38,14 @@ The primary public experience is a direct PMB application flow, not a content-he
 - `src/app/layout.tsx`: skip link, header, `<main id="main">`, footer. Pages render inside `main` and must not add another.
 
 ## Registration wizard (implemented in P2-2)
-- Route `src/app/pendaftaran/page.tsx` (server component, static) renders the client component `RegistrationWizard`. The route is NOT protected yet (auth is blocked on ADR-012).
+- Route `src/app/pendaftaran/page.tsx` (server component, static) renders the client component `RegistrationWizard`. The route is protected by P2-3 (see Authentication below).
 - `src/features/registration/steps.ts`: step ids/labels and the five official terms. `draft.ts`: pure reducer (`wizardReducer`) with `termsAccepted`, `student`, `guardian`, `previousSchool` sections (empty until Phase 3/4). `components/`: `registration-wizard`, `wizard-stepper`, `step-terms`, `step-placeholder`, `step-review`.
 - All steps render inside one component, so the draft survives navigation. State is in memory only: reload loses it. No localStorage by design (personal data; persistence policy not approved). Real persistence arrives in Phase 5 with authentication.
 
+## Authentication (implemented in P2-3; see ADR-012, ADR-020)
+- Google sign-in only, through Supabase Auth; cookie session via `@supabase/ssr`.
+- `src/lib/supabase/config.ts`: validates the two public env vars. `src/server/supabase/server.ts`: per-request server client. `src/server/supabase/refresh-session.ts` + `src/proxy.ts`: session refresh and optimistic redirects.
+- `src/server/auth/session.ts` (data-access layer): `getSessionUser()` (verified claims), `ensureAccount()` (Prisma upsert), `requireAccount(nextPath)` (use at the top of every private page/action).
+- `src/features/auth/actions.ts`: `signInWithGoogle`, `signOut`. `src/app/auth/callback/route.ts`: code exchange + Account creation. `src/lib/auth/safe-redirect.ts`: `sanitizeNextPath`.
+- Pages: `/masuk` (sign-in), `/dashboard` (protected placeholder), `/pendaftaran` (protected). `HeaderAccount` shows Masuk / Dashboard / Keluar.
+- Because the header reads the session, all pages render dynamically.
