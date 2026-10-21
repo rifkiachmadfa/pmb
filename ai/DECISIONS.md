@@ -57,3 +57,20 @@ Supabase Auth is a candidate. Confirm the implementation and its relationship to
 ## ADR-013 — Secure interpretation of the supplied terms
 Status: PROPOSED — OWNER/SCHOOL REVIEW
 The supplied terms mention that a registrant receives a password. The system should use secure account creation and recovery rather than sending plaintext passwords by email/WhatsApp. Approve revised wording before launch.
+
+## ADR-014 — Exact stack versions
+Status: APPROVED BY OWNER INSTRUCTION (Phase 1 executed directly); versions chosen from the npm registry on 2026-10-21.
+Next 16.4.2, React 19.3.0, TypeScript 5.9.3, Tailwind 4, ESLint 9, Zod 4.6.7, Prisma 7.10.1 (+ client and adapter-pg at the same version), npm. Rationale: Next 16 requires Node >=20.9; Prisma 7.10.1 requires Node ^22.12; sandbox is Node 22.22.
+Deliberately NOT adopted: `prisma@latest` tag (8.0.0-rc.24, a release candidate); TypeScript 7 (npm `latest`; unverified with Next/ESLint tooling); ESLint 10.
+
+## ADR-015 — Prisma 7 access pattern
+Status: PROPOSED (implemented as baseline)
+Prisma 7 `prisma-client` generator output to `src/generated/prisma` (gitignored, regenerated on install), driver adapter `@prisma/adapter-pg` mandatory, datasource URL in `prisma.config.ts`. Runtime uses pooled `DATABASE_URL`; Migrate uses `DIRECT_URL`. Host/port/pooler mode must be confirmed against the actual Supabase project. No domain models until business decisions are approved.
+
+## ADR-016 — Next.js defaults changed from scaffold
+Status: APPROVED (engineering decision)
+Removed scaffold's `cacheComponents` and `partialPrefetching` (alter dynamic-rendering semantics; risky for private per-user data, not requested). Replaced Google-font imports with a system font stack so builds need no external network. Replaced the generated global `LayoutProps` type with an explicit prop type so `tsc` passes on a clean checkout. Added `poweredByHeader: false`.
+
+## ADR-017 — shadcn/ui foundation set up manually
+Status: PROPOSED
+`shadcn init` could not reach its registry from the sandbox, so `components.json`, `cn()` and theme tokens were written by hand following the standard new-york/neutral layout. Components are added in Phase 2 via the CLI.

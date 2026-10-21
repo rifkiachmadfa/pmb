@@ -1,0 +1,13 @@
+// Phase 1 baseline: generator + datasource only.
+// Domain models (registration, payment, notification, admission decision) are
+// intentionally NOT defined yet. They depend on unresolved business decisions
+// (see ai/BUSINESS_RULES.md, ai/DATA_MODEL.md) and the auth design (ADR-012).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

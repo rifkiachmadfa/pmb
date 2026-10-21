@@ -34,7 +34,7 @@ If code, documentation, and earlier AI claims disagree, investigate and record t
 Before editing:
 1. Inspect working directory and repository structure.
 2. Read this file and `.ai/README.md`.
-3. Read `.ai/CURRENT_STATE.md`, `PROJECT_CONTEXT.md`, `ROADMAP.md`, `PHASES.md`, `BUSINESS_RULES.md`, and `DECISIONS.md`.
+3. Read `ai/CURRENT_STATE.md`, `PROJECT_CONTEXT.md`, `ROADMAP.md`, `PHASES.md`, `BUSINESS_RULES.md`, and `DECISIONS.md`.
 4. Read relevant architecture, data model, security, integrations, and testing documents.
 5. Inspect `git status`, branch, recent commits, and existing diffs.
 6. Inspect `package.json`, lockfile, Node/package-manager versions, Prisma schema/migrations, source files, environment examples, and tests.

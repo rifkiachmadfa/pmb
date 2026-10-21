@@ -1,5 +1,12 @@
 # Project Changelog
 
+## Phase 1 — Application foundation (2026-10-21) — VERIFICATION_REQUIRED
+- Added Next.js 16.4.2 App Router + TypeScript strict + Tailwind 4 + ESLint foundation (Indonesian placeholder page, `/api/health`).
+- Added Prisma 7.10.1 baseline (no models), `prisma.config.ts`, `src/server/db.ts`, lazy Zod env validation `src/server/env.ts`, `.env.example`.
+- Added shadcn/ui foundation (manual): `components.json`, `cn()`, theme tokens. No components yet.
+- Extended `.gitignore`; added npm scripts `typecheck`, `db:validate`, `db:generate`, `postinstall`.
+- Evidence and limits: see CURRENT_STATE.md Verification. DB connection and migrations NOT verified.
+
 ## Initial documentation baseline
 Status: DOCUMENTATION PREPARED; repository implementation not yet audited.
 
