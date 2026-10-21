@@ -28,12 +28,95 @@ Out of scope: implementing the five-step form, payment, or Fonnte integration.
 - Add safe environment validation and `.env.example`.
 Acceptance: reproducible install, dev server, lint/type-check/build where configured, Prisma schema validation/generation where possible; no real secrets committed.
 
-## Phase 2 — UI shell, authentication, wizard skeleton
-- Build responsive Indonesian UI.
-- Implement sign-up/sign-in, logout, and secure recovery based on the approved auth design.
-- Protect registration/dashboard routes.
-- Implement five-step navigation, back/next, progress indicator, and draft-in-memory/state persistence as appropriate.
-Acceptance: unauthenticated visitors cannot access private registration; form values survive step navigation; terms step blocks next until agreement.
+# PHASE 2 — DESIGN SYSTEM & UI IMPLEMENTATION RULES
+
+## Visual Direction
+
+Build a modern, polished, trustworthy school admission portal for PMB SMK Yadika Tanjungsari Sumedang.
+
+The interface must feel intentionally designed by a professional product designer. Avoid generic AI-generated SaaS aesthetics.
+
+### Color tokens
+
+- Primary light blue: `#A9D5F5`
+- Warm white background: `#FFFDF7`
+- Soft yellow accent: `#F3C969`
+- Dark navy text: `#25364A`
+- Supporting neutral borders: warm gray
+- White surfaces may be used sparingly for contrast.
+
+Define reusable semantic design tokens in the project's global styling. Do not scatter arbitrary hex values across components.
+
+### Color discipline
+
+- Warm white is the dominant page background.
+- Light blue is the primary brand and interaction color.
+- Yellow is a minor accent, never a dominant background.
+- Navy provides readable text and visual hierarchy.
+- Use neutral surfaces and subtle borders to organize information.
+- Ensure accessible contrast, especially for text and button labels. Do not use pale blue or yellow as low-contrast text colors.
+
+### Visual principles
+
+1. Prefer clean typography, consistent spacing, strong alignment, and clear hierarchy.
+2. Use a restrained radius scale and subtle borders.
+3. Use shadows only when they improve hierarchy.
+4. Avoid excessive gradients, glassmorphism, neon colors, floating decorative blobs, oversized rounded cards, and unnecessary animations.
+5. Do not make every section a separate card.
+6. Avoid excessive icons, emojis, badges, and decorative illustrations.
+7. Do not use random colors for different form steps.
+8. Do not invent statistics, testimonials, awards, or school claims.
+9. Keep the interface responsive, accessible, and comfortable for long forms.
+10. Prioritize clarity and usability over visual novelty.
+
+## Component and Library Policy
+
+Before implementing UI:
+- Inspect the existing package manifest, lockfile, installed components, and current project conventions.
+- Reuse existing shadcn/ui components and design tokens whenever possible.
+- Use maintained, compatible versions of Next.js, Tailwind CSS, shadcn/ui, and Lucide icons appropriate to the repository.
+- Consult current official documentation when API compatibility is uncertain.
+- Do not replace working dependencies or upgrade packages solely to appear modern.
+- Add a dependency only when it solves a concrete requirement.
+- Prefer CSS transitions and existing primitives over adding an animation library without a clear need.
+- Keep components reusable, typed, and organized by responsibility.
+
+## Phase 2 Scope
+
+Implement:
+- Shared responsive application shell.
+- Sign-up and sign-in interfaces.
+- Secure account recovery interface.
+- Protected registration and dashboard routes.
+- Five-step registration wizard skeleton.
+- Progress indicator and back/next navigation.
+- Terms acceptance gate.
+- Form draft state that survives step navigation.
+- Consistent loading, validation, empty, and error states.
+
+Follow the authentication architecture approved in Phase 0. Do not implement custom password storage or bypass server-side authorization.
+
+The five steps must be visually consistent:
+1. Ketentuan
+2. Data Siswa
+3. Data Orang Tua / Wali
+4. Data Sekolah Asal
+5. Konfirmasi
+
+## Acceptance Criteria
+
+- The UI uses the approved color tokens consistently.
+- The interface looks cohesive on mobile and desktop.
+- The form remains readable and easy to navigate.
+- Yellow remains a restrained accent.
+- No generic AI-style decorative elements are added without a specific design purpose.
+- Unauthenticated visitors cannot access private registration or dashboard data.
+- Form values survive navigation between steps.
+- The user cannot proceed past terms without explicit agreement.
+- Relevant lint, type-check, and build checks are executed when available.
+- Update `.ai/ARCHITECTURE.md`, `.ai/CURRENT_STATE.md`, `.ai/ROADMAP.md`, `.ai/CHANGELOG.md`, and the task handoff based on verified results.
+
+Do not claim that Phase 2 is complete until its acceptance criteria have been verified.
 
 ## Phase 3 — Student data
 - Implement official student fields from requirements.
