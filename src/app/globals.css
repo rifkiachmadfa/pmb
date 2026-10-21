@@ -1,16 +1,41 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/*
+ * Design tokens — PMB SMK Yadika Tanjungsari Sumedang (P2-1)
+ *
+ * Approved brand palette (the ONLY place raw hex values should appear):
+ *   light blue #A9D5F5 | warm white #FFFDF7 | soft yellow #F3C969 | navy #25364A
+ *
+ * Components must use the semantic utilities (bg-primary, text-foreground, ...)
+ * and never hard-code colors. Contrast ratios (WCAG 2.x) were computed, not guessed:
+ *   navy on light blue 7.93 | navy on blue hover 6.76 | navy on warm white 12.11
+ *   navy on yellow 7.84     | muted text on warm white 5.73
+ *   input border on warm white 3.60 (>= 3:1 for form control boundaries)
+ *   white on light blue is only 1.55, so light-blue buttons ALWAYS use navy labels.
+ * Light mode only: no dark palette has been approved.
+ */
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Brand */
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-cream: var(--brand-cream);
+  --color-brand-yellow: var(--brand-yellow);
+  --color-brand-navy: var(--brand-navy);
+
+  /* Semantic */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -18,14 +43,26 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+
+  /* Restrained radius scale */
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 4px);
+
   /* System font stack: avoids build-time downloads from external font hosts. */
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, "Noto Sans", sans-serif;
@@ -33,53 +70,70 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.45 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-}
+  color-scheme: light;
+  --radius: 0.5rem;
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  /* Approved palette */
+  --brand-blue: #a9d5f5;
+  --brand-cream: #fffdf7;
+  --brand-yellow: #f3c969;
+  --brand-navy: #25364a;
+
+  /* Surfaces and text */
+  --background: var(--brand-cream);
+  --foreground: var(--brand-navy);
+  --surface: #ffffff; /* form controls and raised panels, used sparingly */
+  --card: var(--surface);
+  --card-foreground: var(--brand-navy);
+  --popover: var(--surface);
+  --popover-foreground: var(--brand-navy);
+
+  /* Primary = light blue, label ALWAYS navy */
+  --primary: var(--brand-blue);
+  --primary-hover: #9cc5e4; /* navy 10% over blue */
+  --primary-active: #91b8d6; /* navy 18% over blue */
+  --primary-foreground: var(--brand-navy);
+
+  /* Secondary / muted / accent: quiet warm neutrals and a pale blue tint */
+  --secondary: #f3efe4;
+  --secondary-foreground: var(--brand-navy);
+  --muted: #f3efe4;
+  --muted-foreground: #5b6675;
+  --accent: #e1eff6; /* hover tint for outline/ghost controls */
+  --accent-foreground: var(--brand-navy);
+
+  /* Yellow: minor accent only, never a page background */
+  --highlight: var(--brand-yellow);
+  --highlight-foreground: var(--brand-navy);
+
+  /* Feedback */
+  --info: #e1eff6;
+  --info-foreground: var(--brand-navy);
+  --warning: #fbedcc;
+  --warning-foreground: var(--brand-navy);
+  --destructive: #b3261e;
+  --destructive-hover: #9a1f18;
+  --destructive-foreground: #ffffff;
+  --destructive-soft: #f9ece6;
+
+  /* Lines. --border is decorative; --input must stay >= 3:1 on the page. */
+  --border: #e4dfd3;
+  --input: #8c8577;
+  --ring: var(--brand-navy);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+  }
+  ::selection {
+    background: var(--brand-blue);
+    color: var(--brand-navy);
   }
 }

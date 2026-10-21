@@ -30,3 +30,9 @@ Use database transactions and unique constraints for critical state changes. Per
 
 ## UI
 The primary public experience is a direct PMB application flow, not a content-heavy marketing landing page. Use Indonesian labels, accessible forms, clear progression, and mobile-first responsive layout.
+
+## UI structure (implemented in P2-1; see ADR-019)
+- `src/app/globals.css`: design tokens (approved palette -> semantic tokens), light mode only.
+- `src/components/ui/`: `button`, `input`, `label`, `checkbox`, `alert` (hand-written in shadcn new-york style, no Radix).
+- `src/components/layout/`: `SkipLink`, `SiteHeader` (has a `children` slot for future nav/account actions), `SiteFooter`, `PageContainer` (`narrow` | `default` | `wide`).
+- `src/app/layout.tsx`: skip link, header, `<main id="main">`, footer. Pages render inside `main` and must not add another.

@@ -1,5 +1,14 @@
 # Project Changelog
 
+## P2-1 — Design tokens and app shell (2026-10-21) — IMPLEMENTED, TESTED (build/lint/typecheck + local browser check)
+- Replaced neutral shadcn tokens in `src/app/globals.css` with the approved palette (light blue `#A9D5F5`, warm white `#FFFDF7`, soft yellow `#F3C969`, navy `#25364A`) mapped to semantic tokens. Light mode only (the unapproved `.dark` palette was removed).
+- Added UI components (no new dependencies): `button`, `input`, `label`, `checkbox`, `alert` in `src/components/ui/`.
+- Added shared shell: `SkipLink`, `SiteHeader`, `SiteFooter`, `PageContainer` in `src/components/layout/`; root layout now renders header + `<main id="main">` + footer.
+- Primary buttons use navy labels on light blue (white on light blue is 1.55:1, fails WCAG).
+- Updated placeholder home page to use the shell.
+- Not in scope / not done: auth screens, protected routes, wizard skeleton (later Phase 2 tasks).
+- Docs: ARCHITECTURE.md (UI section), DECISIONS.md (ADR-017 note, ADR-019), CURRENT_STATE.md, ROADMAP.md, handoff/P2-1.md.
+
 ## DB-SCHEMA-001 — Prisma domain schema v1 (2026-10-21) — IMPLEMENTED, UNMIGRATED, PROPOSED
 - Replaced baseline `prisma/schema.prisma` with domain models (accounts, registrations, student data, parent/guardian, previous school, payments, payment events, notification deliveries, admission decisions).
 - Verified: `prisma format`, `prisma validate`, `prisma generate`, `npm run typecheck`, `npm run lint` (sandbox needs `PRISMA_SCHEMA_ENGINE_BINARY=/bin/true`). Not run: migrations, DB connection.

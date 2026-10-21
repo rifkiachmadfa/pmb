@@ -73,8 +73,20 @@ Removed scaffold's `cacheComponents` and `partialPrefetching` (alter dynamic-ren
 
 ## ADR-017 — shadcn/ui foundation set up manually
 Status: PROPOSED
-`shadcn init` could not reach its registry from the sandbox, so `components.json`, `cn()` and theme tokens were written by hand following the standard new-york/neutral layout. Components are added in Phase 2 via the CLI.
+`shadcn init` could not reach its registry from the sandbox, so `components.json`, `cn()` and theme tokens were written by hand following the standard new-york/neutral layout. Components are added in Phase 2 via the CLI. UPDATE (P2-1): the CLI was still unreachable, so the five base components were hand-written in the shadcn new-york style; see ADR-019.
 
 ## ADR-018 — Prisma domain schema v1
 Status: PROPOSED (owner requested the schema ahead of Phase 2; not a phase approval)
 Adds Account, Registration, StudentData, ParentGuardian, PreviousSchool, Payment, PaymentEvent, NotificationDelivery, AdmissionDecision. Highlights: provider-agnostic Account; separate registration/payment/admission states; idempotency via unique `eventKey`/`dedupeKey`; Restrict-only deletes; unconfirmed option lists as String; one registration per account per period (answers an OPEN question provisionally). Details and open items: `DATA_MODEL.md`. Parent/guardian and previous-school tables remain PROPOSED per ADR-007/008.
+
+## ADR-019 — Design tokens and base UI components (P2-1)
+Status: PROPOSED (implemented; palette itself is APPROVED by owner in PHASES.md)
+- Raw hex values live ONLY in `:root` of `src/app/globals.css`; components use semantic Tailwind utilities (`bg-primary`, `text-foreground`, `border-input`, ...). Brand tokens: `--brand-blue|cream|yellow|navy`.
+- Primary = light blue with NAVY label (white fails: 1.55:1). Hover/active are navy mixed into the blue (`#9cc5e4`, `#91b8d6`), still 6.76:1 / 5.88:1.
+- Focus ring = navy (light blue ring is only 1.53:1 on the page background). Form control border `--input` `#8C8577` (3.60:1); `--border` is decorative only.
+- Yellow is used only as `--highlight` and the warning alert; never as page background.
+- Light mode only. No dark palette approved, so the scaffold `.dark` block was removed (the `dark` custom variant remains inert).
+- Derived tints (`--info`, `--warning`, `--destructive*`, `--muted-foreground`, `--secondary`) are NOT in the approved palette; they are engineering choices for feedback/neutral surfaces. Owner may adjust. Red `#B3261E` is used only for errors.
+- No new dependencies: Checkbox is a styled native `<input type="checkbox">`; Button exports `buttonVariants` for use on `next/link` instead of Radix `Slot`/`asChild`. Revisit if a component needs real Radix behavior (Select, Dialog, ...).
+- Layout: root layout owns the shell; pages must not render their own `<main>`.
+
