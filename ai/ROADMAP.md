@@ -20,4 +20,6 @@ Statuses: `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `COMPLETED`, `VERIFICATION_RE
 A phase is COMPLETED only when its acceptance criteria are satisfied, relevant checks are executed, actual evidence is recorded, and documentation is updated. If code exists but required verification is unavailable, use VERIFICATION_REQUIRED. Do not advance past unresolved dependencies without owner approval.
 
 ## Current focus
+DB-SCHEMA-001 (owner-requested Prisma schema v1) done as PROPOSED/unmigrated; awaiting owner review. Phase 3-5 field/persistence work still follows phase order.
+
 Phase 1 implemented; awaiting owner verification (see CURRENT_STATE.md). Next: Phase 2 once ADR-012 is approved. Do not implement the form, payment, or notification integrations ahead of their phases.

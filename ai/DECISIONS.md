@@ -74,3 +74,7 @@ Removed scaffold's `cacheComponents` and `partialPrefetching` (alter dynamic-ren
 ## ADR-017 — shadcn/ui foundation set up manually
 Status: PROPOSED
 `shadcn init` could not reach its registry from the sandbox, so `components.json`, `cn()` and theme tokens were written by hand following the standard new-york/neutral layout. Components are added in Phase 2 via the CLI.
+
+## ADR-018 — Prisma domain schema v1
+Status: PROPOSED (owner requested the schema ahead of Phase 2; not a phase approval)
+Adds Account, Registration, StudentData, ParentGuardian, PreviousSchool, Payment, PaymentEvent, NotificationDelivery, AdmissionDecision. Highlights: provider-agnostic Account; separate registration/payment/admission states; idempotency via unique `eventKey`/`dedupeKey`; Restrict-only deletes; unconfirmed option lists as String; one registration per account per period (answers an OPEN question provisionally). Details and open items: `DATA_MODEL.md`. Parent/guardian and previous-school tables remain PROPOSED per ADR-007/008.

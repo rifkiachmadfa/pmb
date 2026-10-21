@@ -1,5 +1,10 @@
 # Project Changelog
 
+## DB-SCHEMA-001 — Prisma domain schema v1 (2026-10-21) — IMPLEMENTED, UNMIGRATED, PROPOSED
+- Replaced baseline `prisma/schema.prisma` with domain models (accounts, registrations, student data, parent/guardian, previous school, payments, payment events, notification deliveries, admission decisions).
+- Verified: `prisma format`, `prisma validate`, `prisma generate`, `npm run typecheck`, `npm run lint` (sandbox needs `PRISMA_SCHEMA_ENGINE_BINARY=/bin/true`). Not run: migrations, DB connection.
+- Docs: DATA_MODEL.md (schema notes, manual SQL, open items), ADR-018, CURRENT_STATE.md.
+
 ## Phase 1 — Application foundation (2026-10-21) — VERIFICATION_REQUIRED
 - Added Next.js 16.4.2 App Router + TypeScript strict + Tailwind 4 + ESLint foundation (Indonesian placeholder page, `/api/health`).
 - Added Prisma 7.10.1 baseline (no models), `prisma.config.ts`, `src/server/db.ts`, lazy Zod env validation `src/server/env.ts`, `.env.example`.

@@ -36,3 +36,43 @@ IDR 350,000, allocated toward the school admission fee. Model allocation clearly
 - Are multiple parents/guardians represented as separate rows?
 - What is the approved admission decision/audit workflow?
 - What payment expiry, cancellation, refund, and reconciliation policies apply?
+
+---
+
+# Prisma Schema v1 (task DB-SCHEMA-001, 2026-10-21) — PROPOSED, UNMIGRATED
+
+Source of truth: `prisma/schema.prisma`. Status: IMPLEMENTED; `prisma format/validate/generate` + `tsc` PASS. **No migration created, no database touched.**
+
+## Models
+`Account` 1—N `Registration` (unique per `ownerId + admissionPeriod`, PROPOSED). `Registration` 1—1 `StudentData`, 1—N `ParentGuardian` (unique per relationship, PROPOSED), 1—1 `PreviousSchool`, 1—N `Payment`, 1—N `NotificationDelivery`, 1—N `AdmissionDecision`. `Payment` 1—N `PaymentEvent`.
+
+## Design decisions
+- **Three independent statuses**: `Registration.status` (DRAFT/SUBMITTED), `Payment.status`, `Registration.admissionStatus` (PENDING/ACCEPTED/REJECTED). Nothing links payment to admission.
+- `Account` holds `authProviderId` (string) and no credentials, so it works with Supabase Auth or any other approved provider (ADR-012 still PROPOSED).
+- Draft support: `lastCompletedStep` + per-step tables created only after server validation, so required columns stay NOT NULL.
+- Option-list fields are `String` (lists unconfirmed). No unique on NIK/NISN/KK (policy unknown); only non-unique indexes on `nik`, `nisn`.
+- `PaymentEvent.eventKey` UNIQUE = idempotent callbacks. `NotificationDelivery.dedupeKey` UNIQUE = one notification per event. Raw provider payloads are not stored.
+- All FKs `onDelete: Restrict` until a retention policy is approved.
+
+## Required SQL NOT expressible in Prisma (add by hand to the first migration, after review)
+```sql
+-- At most one PAID payment per registration
+CREATE UNIQUE INDEX payments_one_paid_per_registration ON payments (registration_id) WHERE status = 'PAID';
+ALTER TABLE payments      ADD CONSTRAINT payments_amount_positive CHECK (amount_idr > 0);
+ALTER TABLE registrations ADD CONSTRAINT registrations_step_range CHECK (last_completed_step BETWEEN 0 AND 5);
+ALTER TABLE registrations ADD CONSTRAINT registrations_submitted_complete CHECK
+  (status <> 'SUBMITTED' OR (submitted_at IS NOT NULL AND terms_accepted_at IS NOT NULL AND registration_number IS NOT NULL));
+-- Supabase exposes `public` through its Data API. Deny-by-default for every table (no policies);
+-- the app reaches data only through Prisma on the server. REPEAT for all 10 tables.
+ALTER TABLE accounts ENABLE ROW LEVEL SECURITY; -- ...and the other tables
+```
+RLS caveat: confirm the role used in `DATABASE_URL` bypasses RLS (e.g. `postgres`/table owner) on the real project; otherwise Prisma queries will return nothing. UNVERIFIED.
+
+## OPEN items that change this schema
+1. One vs. multiple registrations per account/period (currently one).
+2. Official option lists, KPS/KIP "-" convention, distance unit (km assumed), weight/height precision.
+3. Final parent/guardian + previous-school fields and requiredness.
+4. Admission outcomes, staff roles, audit fields.
+5. Payment expiry/cancel/refund (no REFUNDED status yet); Snap token storage acceptable?
+6. WhatsApp recipient: student or parent; registration-number format.
+7. Encryption-at-rest / retention for identity numbers.

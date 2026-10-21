@@ -1,7 +1,20 @@
-// Phase 1 baseline: generator + datasource only.
-// Domain models (registration, payment, notification, admission decision) are
-// intentionally NOT defined yet. They depend on unresolved business decisions
-// (see ai/BUSINESS_RULES.md, ai/DATA_MODEL.md) and the auth design (ADR-012).
+// PMB SMK Yadika Tanjungsari Sumedang 2026/2027 — domain schema.
+//
+// STATUS: PROPOSED. Written at owner request ahead of Phase 2 (see ai/DECISIONS.md ADR-018).
+// Fields/rules marked "PROPOSED" or "OPEN" in comments are NOT approved by the school.
+//
+// Conventions
+//  - Identifiers are UUIDv7 (time-ordered). IDs are NOT an authorization control;
+//    every private query must still filter by owner / role.
+//  - NIK, NISN, KK, birth-certificate no., NPSN, phones, postal codes are String.
+//  - Money is integer rupiah (never float).
+//  - All instants are timestamptz (stored UTC); the school's local zone is Asia/Jakarta
+//    and conversion happens at the presentation layer.
+//  - No credentials/passwords are stored here. Authentication is delegated to the
+//    auth provider (ADR-012, still PROPOSED) and linked via Account.authProviderId.
+//  - onDelete is Restrict everywhere: no cascading deletes until the school approves
+//    a retention/deletion policy.
+//  - Registration, payment, and admission states are separate columns/tables by design.
 
 generator client {
   provider = "prisma-client"
@@ -10,4 +23,399 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum AccountRole {
+  STUDENT
+  ADMISSION_STAFF // PROPOSED: admin roles/permissions are not approved yet (OPEN).
+
+  @@map("account_role")
+}
+
+enum RegistrationStatus {
+  DRAFT // started, not yet submitted at step 5 (Konfirmasi)
+  SUBMITTED // registration successfully created
+
+  @@map("registration_status")
+}
+
+// Admission outcome. Changed ONLY by authorized staff; never by payment or by students.
+enum AdmissionStatus {
+  PENDING
+  ACCEPTED // PROPOSED values: official admission criteria/outcomes are OPEN.
+  REJECTED
+
+  @@map("admission_status")
+}
+
+// PROPOSED (ADR-007): one row per relationship, at most one of each per registration.
+enum GuardianRelationship {
+  FATHER
+  MOTHER
+  GUARDIAN
+
+  @@map("guardian_relationship")
+}
+
+enum PaymentProvider {
+  MIDTRANS
+
+  @@map("payment_provider")
+}
+
+// Makes the allocation explicit: the initial payment is a deposit toward the
+// admission fee, NOT an additional fee (ADR-004).
+enum PaymentPurpose {
+  ADMISSION_FEE_INITIAL
+
+  @@map("payment_purpose")
+}
+
+// REFUNDED is deliberately absent: refund policy is OPEN. Postgres enums can be
+// extended later with ALTER TYPE ... ADD VALUE.
+enum PaymentStatus {
+  PENDING
+  PAID // set ONLY after server-side verification of the provider notification
+  FAILED
+  EXPIRED
+  CANCELED
+
+  @@map("payment_status")
+}
+
+enum NotificationEvent {
+  REGISTRATION_CREATED
+  PAYMENT_VERIFIED
+
+  @@map("notification_event")
+}
+
+enum NotificationProvider {
+  FONNTE
+
+  @@map("notification_provider")
+}
+
+enum NotificationStatus {
+  PENDING // queued, or waiting for retry
+  PROCESSING // claimed by a sender; guards against concurrent duplicate sends
+  SENT
+  FAILED // gave up after max attempts (limit is an app setting)
+
+  @@map("notification_status")
+}
+
+// ───────────────────────────── Account ─────────────────────────────
+
+// Application-side record of every signed-up user, created regardless of payment.
+// Credentials live ONLY in the auth provider.
+model Account {
+  id             String      @id @default(uuid(7)) @db.Uuid
+  // Subject/user id from the auth provider (provider-agnostic string).
+  authProviderId String      @unique @map("auth_provider_id")
+  // Mirror of the provider email for display/lookup; normalize to lowercase in the app.
+  email          String      @unique
+  role           AccountRole @default(STUDENT)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  registrations      Registration[]
+  admissionDecisions AdmissionDecision[]
+
+  @@map("accounts")
+}
+
+// ───────────────────────────── Registration ─────────────────────────────
+
+model Registration {
+  id                 String             @id @default(uuid(7)) @db.Uuid
+  ownerId            String             @map("owner_id") @db.Uuid
+  // e.g. "2026/2027". Set from app config, not hard-coded here.
+  admissionPeriod    String             @map("admission_period")
+  // Human-facing reference, assigned at submission. Format is OPEN (not approved).
+  registrationNumber String?            @unique @map("registration_number")
+  status             RegistrationStatus @default(DRAFT)
+  // 0 = none, 1..5 = highest wizard step whose data was saved and validated server-side.
+  lastCompletedStep  Int                @default(0) @map("last_completed_step") @db.SmallInt
+  // Step 1: explicit acceptance of the five terms. Version is needed because the
+  // wording of term 3 must be revised (ADR-013).
+  termsAcceptedAt    DateTime?          @map("terms_accepted_at") @db.Timestamptz(3)
+  termsVersion       String?            @map("terms_version")
+  submittedAt        DateTime?          @map("submitted_at") @db.Timestamptz(3)
+  // Current admission outcome. History/audit lives in AdmissionDecision; both are
+  // written in one transaction by the staff workflow.
+  admissionStatus    AdmissionStatus    @default(PENDING) @map("admission_status")
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  owner              Account                @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  studentData        StudentData?
+  guardians          ParentGuardian[]
+  previousSchool     PreviousSchool?
+  payments           Payment[]
+  notifications      NotificationDelivery[]
+  admissionDecisions AdmissionDecision[]
+
+  // PROPOSED: one registration per account per admission period. This answers an OPEN
+  // question ("can one account have multiple registrations?"); drop if the school says otherwise.
+  @@unique([ownerId, admissionPeriod])
+  @@index([status])
+  @@index([admissionStatus])
+  @@map("registrations")
+}
+
+// ───────────────────────────── Step 2: Data Siswa ─────────────────────────────
+
+// Required columns follow the owner-supplied form. Rows are created only after the
+// step is validated server-side, so required columns can be NOT NULL while the
+// registration itself is still a DRAFT.
+// Option-list fields (gender, religion, citizenship, residenceType, transportMode) are
+// String on purpose: the official lists are not confirmed. Validate with Zod, and
+// promote to enums once approved.
+// Deliberately NO unique constraint on nik/nisn/familyCardNumber (see DATA_MODEL.md).
+model StudentData {
+  id             String @id @default(uuid(7)) @db.Uuid
+  registrationId String @unique @map("registration_id") @db.Uuid
+
+  nisn                   String
+  nik                    String
+  birthCertificateNumber String   @map("birth_certificate_number")
+  familyCardNumber       String   @map("family_card_number")
+  fullName               String   @map("full_name")
+  gender                 String
+  birthPlace             String   @map("birth_place")
+  birthDate              DateTime @map("birth_date") @db.Date
+  religion               String
+
+  streetAddress String @map("street_address")
+  rt            String
+  rw            String
+  village       String // desa / kelurahan
+  subdistrict   String // kecamatan
+  regency       String // kabupaten / kota
+  province      String
+  postalCode    String @map("postal_code")
+  citizenship   String
+
+  // KPS/KIP. OPEN: the form says to enter "-" when no number exists, and whether the
+  // "recipient" answer itself can be "-" is unconfirmed. Stored as Boolean + nullable
+  // number; the "-" convention is applied in the validation/mapping layer, not here.
+  isKpsRecipient Boolean @map("is_kps_recipient")
+  kpsNumber      String? @map("kps_number")
+  isKipRecipient Boolean @map("is_kip_recipient")
+  kipNumber      String? @map("kip_number")
+  kipHolderName  String? @map("kip_holder_name")
+
+  birthOrder         Int     @map("birth_order") @db.SmallInt
+  siblingCount       Int     @map("sibling_count") @db.SmallInt
+  heightCm           Int     @map("height_cm") @db.SmallInt
+  weightKg           Int     @map("weight_kg") @db.SmallInt
+  residenceType      String  @map("residence_type")
+  // OPEN: unit assumed to be kilometres; confirm against the official form.
+  distanceToSchoolKm Decimal @map("distance_to_school_km") @db.Decimal(6, 2)
+  transportMode      String  @map("transport_mode")
+
+  mobilePhone   String  @map("mobile_phone")
+  // Nullable: many households have no landline (OPEN whether truly required).
+  landlinePhone String? @map("landline_phone")
+  email         String
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+
+  @@index([nik])
+  @@index([nisn])
+  @@map("student_data")
+}
+
+// ───────────────────────────── Step 3: Orang Tua / Wali ─────────────────────────────
+
+// PROPOSED (ADR-007) — awaiting school review. Only relationship + fullName are
+// required; everything else is nullable so requiredness can be tightened later
+// without data conflicts.
+model ParentGuardian {
+  id             String               @id @default(uuid(7)) @db.Uuid
+  registrationId String               @map("registration_id") @db.Uuid
+  relationship   GuardianRelationship
+  fullName       String               @map("full_name")
+  nik            String?
+  birthPlace     String?              @map("birth_place")
+  birthDate      DateTime?            @map("birth_date") @db.Date
+  education      String?
+  occupation     String?
+  incomeRange    String?              @map("income_range")
+  mobilePhone    String?              @map("mobile_phone")
+  email          String?
+
+  streetAddress String? @map("street_address")
+  rt            String?
+  rw            String?
+  village       String?
+  subdistrict   String?
+  regency       String?
+  province      String?
+  postalCode    String? @map("postal_code")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+
+  @@unique([registrationId, relationship])
+  @@map("parent_guardians")
+}
+
+// ───────────────────────────── Step 4: Sekolah Asal ─────────────────────────────
+
+// PROPOSED (ADR-008) — awaiting school review. Diploma/exam numbers are optional
+// because they may not be issued yet.
+model PreviousSchool {
+  id                    String   @id @default(uuid(7)) @db.Uuid
+  registrationId        String   @unique @map("registration_id") @db.Uuid
+  schoolName            String   @map("school_name")
+  schoolLevel           String?  @map("school_level")
+  npsn                  String?
+  ownership             String? // negeri / swasta, if the school wants it
+  streetAddress         String?  @map("street_address")
+  village               String?
+  subdistrict           String?
+  regency               String?
+  province              String?
+  entryYear             Int?     @map("entry_year") @db.SmallInt
+  graduationYear        Int?     @map("graduation_year") @db.SmallInt
+  examParticipantNumber String?  @map("exam_participant_number")
+  diplomaNumber         String?  @map("diploma_number")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+
+  @@map("previous_schools")
+}
+
+// ───────────────────────────── Payment ─────────────────────────────
+
+// One row per payment attempt (Midtrans transaction). Created server-side with the
+// fixed approved amount; status moves only via verified provider notifications.
+model Payment {
+  id                    String          @id @default(uuid(7)) @db.Uuid
+  registrationId        String          @map("registration_id") @db.Uuid
+  provider              PaymentProvider @default(MIDTRANS)
+  purpose               PaymentPurpose  @default(ADMISSION_FEE_INITIAL)
+  // Integer rupiah. Expected: 350000. The server compares the provider-reported
+  // amount against THIS stored value, never against a browser-supplied one.
+  amountIdr             Int             @map("amount_idr")
+  // Our merchant order id sent to Midtrans (opaque, server-generated).
+  orderId               String          @unique @map("order_id")
+  // Midtrans transaction_id, known after the first notification/status call.
+  providerTransactionId String?         @unique @map("provider_transaction_id")
+  // Lets the student resume an unpaid attempt. Needs the Snap token to be treated as
+  // semi-secret: never log it.
+  snapToken             String?         @map("snap_token")
+  paymentMethod         String?         @map("payment_method")
+  status                PaymentStatus   @default(PENDING)
+  paidAt                DateTime?       @map("paid_at") @db.Timestamptz(3)
+  // OPEN: payment expiry policy.
+  expiresAt             DateTime?       @map("expires_at") @db.Timestamptz(3)
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  registration  Registration           @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  events        PaymentEvent[]
+  notifications NotificationDelivery[]
+
+  @@index([registrationId, status])
+  @@map("payments")
+}
+
+// Append-only record of provider notifications that matched a known Payment.
+// Notifications with an invalid signature or an unknown order id are rejected and
+// are NOT stored (log a redacted line only). Full raw payloads are NOT stored.
+model PaymentEvent {
+  id                 String         @id @default(uuid(7)) @db.Uuid
+  paymentId          String         @map("payment_id") @db.Uuid
+  // Idempotency key. Midtrans sends no event id, so derive a stable fingerprint, e.g.
+  // sha256(order_id | transaction_status | status_code | gross_amount | transaction_time).
+  // The UNIQUE constraint makes duplicate callbacks a no-op.
+  eventKey           String         @unique @map("event_key")
+  providerStatus     String         @map("provider_status") // Midtrans transaction_status
+  providerStatusCode String?        @map("provider_status_code")
+  fraudStatus        String?        @map("fraud_status")
+  reportedAmountIdr  Int?           @map("reported_amount_idr")
+  // true only if signature, order identity, and amount all checked out.
+  verified           Boolean
+  rejectionReason    String?        @map("rejection_reason")
+  // Payment status after applying this event (null if rejected / no transition).
+  resultingStatus    PaymentStatus? @map("resulting_status")
+  // Redacted, allow-listed fields only. Never secrets or personal data.
+  safeMetadata       Json?          @map("safe_metadata")
+  receivedAt         DateTime       @default(now()) @map("received_at") @db.Timestamptz(3)
+  processedAt        DateTime?      @map("processed_at") @db.Timestamptz(3)
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId])
+  @@map("payment_events")
+}
+
+// ───────────────────────────── Notifications ─────────────────────────────
+
+// Durable outbox for WhatsApp (Fonnte). Failure here NEVER changes registration or
+// payment state. The recipient number is resolved from registration data at send
+// time (not duplicated here). OPEN: which number receives it (student vs parent).
+model NotificationDelivery {
+  id                String               @id @default(uuid(7)) @db.Uuid
+  registrationId    String               @map("registration_id") @db.Uuid
+  // Set for PAYMENT_VERIFIED, null for REGISTRATION_CREATED.
+  paymentId         String?              @map("payment_id") @db.Uuid
+  event             NotificationEvent
+  provider          NotificationProvider @default(FONNTE)
+  status            NotificationStatus   @default(PENDING)
+  // e.g. "registration:<registrationId>:REGISTRATION_CREATED" or
+  //      "payment:<paymentId>:PAYMENT_VERIFIED". UNIQUE = exactly one notification
+  //      row per event, so repeated callbacks/retries cannot enqueue duplicates.
+  dedupeKey         String               @unique @map("dedupe_key")
+  attempts          Int                  @default(0)
+  lastAttemptAt     DateTime?            @map("last_attempt_at") @db.Timestamptz(3)
+  nextAttemptAt     DateTime?            @map("next_attempt_at") @db.Timestamptz(3)
+  sentAt            DateTime?            @map("sent_at") @db.Timestamptz(3)
+  providerMessageId String?              @map("provider_message_id")
+  // Safe, truncated error info only (no tokens, no phone numbers, no message bodies).
+  lastErrorCode     String?              @map("last_error_code")
+  lastErrorMessage  String?              @map("last_error_message")
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  payment      Payment?     @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([status, nextAttemptAt])
+  @@index([registrationId])
+  @@map("notification_deliveries")
+}
+
+// ───────────────────────────── Admission decisions ─────────────────────────────
+
+// Append-only audit trail of admission-status changes made by authorized staff.
+// Registration.admissionStatus holds the current value; update both in a transaction.
+// OPEN: official criteria, role model, and any extra audit fields.
+model AdmissionDecision {
+  id             String          @id @default(uuid(7)) @db.Uuid
+  registrationId String          @map("registration_id") @db.Uuid
+  decidedById    String          @map("decided_by_id") @db.Uuid
+  fromStatus     AdmissionStatus @map("from_status")
+  toStatus       AdmissionStatus @map("to_status")
+  note           String?
+  decidedAt      DateTime        @default(now()) @map("decided_at") @db.Timestamptz(3)
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  decidedBy    Account      @relation(fields: [decidedById], references: [id], onDelete: Restrict)
+
+  @@index([registrationId])
+  @@index([decidedById])
+  @@map("admission_decisions")
 }
